@@ -8,6 +8,22 @@ const openBtn = document.getElementById('open-btn');
 let currentFile = { name: 'edited.csv', text: '', handle: null };
 let editorReady = false;
 
+async function loadPendingPayload() {
+  const params = new URLSearchParams(location.search);
+  const src = params.get('src');
+  if (src && src.startsWith('session:')) {
+    const key = src.slice('session:'.length);
+    const stored = await chrome.storage.session.get(key);
+    const payload = stored[key];
+    if (payload) {
+      currentFile = { name: payload.name, text: payload.text, handle: null };
+      await chrome.storage.session.remove(key);
+      sendCurrentFile();
+    }
+  }
+}
+loadPendingPayload();
+
 function sendCurrentFile() {
   if (!editorReady) return;
   for (const msg of buildCsvUpdateMessages(currentFile.text, SLICE_SIZE)) {
