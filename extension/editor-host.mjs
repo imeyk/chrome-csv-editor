@@ -18,15 +18,18 @@ async function loadPendingPayload() {
     if (payload) {
       currentFile = { name: payload.name, text: payload.text, handle: null };
       await chrome.storage.session.remove(key);
+      markLoaded();
       sendCurrentFile();
     }
   }
   if (src && src.startsWith('fileurl:')) {
     const fileUrl = decodeURIComponent(src.slice('fileurl:'.length));
     try {
-      const res = await fetch(fileUrl);
-      const text = await res.text();
+      // fetch() does not support the file: scheme in Chrome — use XHR, which
+      // extensions may use to read file:// when "Allow access to file URLs" is on.
+      const text = await readTextViaXhr(fileUrl);
       currentFile = { name: fileUrl.split('/').pop() || 'edited.csv', text, handle: null };
+      markLoaded();
       sendCurrentFile();
     } catch (err) {
       // Most likely cause: "Allow access to file URLs" is disabled, or the file was removed.
@@ -48,14 +51,38 @@ function sendCurrentFile() {
   }
 }
 
+// Read a URL as text via XHR. Needed for file:// (fetch rejects the file scheme).
+function readTextViaXhr(url) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('GET', url);
+    xhr.responseType = 'text';
+    xhr.onload = () => {
+      // file:// responses report status 0 on success.
+      if (xhr.status === 0 || (xhr.status >= 200 && xhr.status < 300)) resolve(xhr.responseText);
+      else reject(new Error('XHR status ' + xhr.status + ' for ' + url));
+    };
+    xhr.onerror = () => reject(new Error('XHR failed for ' + url));
+    xhr.send();
+  });
+}
+
+// Once a file is loaded, hide the top toolbar to give the editor full height.
+// Drag-dropping another .csv anywhere on the page still replaces it.
+function markLoaded() {
+  document.body.classList.add('file-loaded');
+}
+
 async function loadFromHandle(handle) {
   const file = await handle.getFile();
   currentFile = { name: file.name, text: await file.text(), handle };
+  markLoaded();
   sendCurrentFile();
 }
 
 async function loadFromFile(file) {
   currentFile = { name: file.name, text: await file.text(), handle: null };
+  markLoaded();
   sendCurrentFile();
 }
 

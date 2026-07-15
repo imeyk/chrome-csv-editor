@@ -12,10 +12,17 @@
 	<link rel="stylesheet" href="./light.css">
 	<link rel="stylesheet" href="./high_contrast.css">
 	<link rel="stylesheet" href="./settingsOverwrite.css">
+	<style>
+		/* Chrome extension: theme follows the browser/OS light-dark preference
+		   (set via host-bridge.js). We can only detect light/dark, not read the
+		   user's active Chrome theme palette (no web API exposes it). */
+		html, body.vscode-dark { background: #1e1e1e; }
+		body.vscode-light { background: #ffffff; }
+	</style>
 	<script src="out/beforeDomLoaded.js"></script>
 </head>
 
-<body class="vscode-dark vs-code-settings-font-size" style="background-color: #003b49">
+<body class="vs-code-settings-font-size">
 
 	<div id="find-widget" class="find-widget" style="display: none; right: 100px;">
 
