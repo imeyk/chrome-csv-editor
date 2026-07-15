@@ -9,7 +9,12 @@
   </style>
 </head>
 <body>
-  <iframe id="editor-frame" src="../csvEditorHtml/sandbox.html"></iframe>
+  <div id="toolbar" style="font:13px system-ui;padding:6px 10px;background:#f3f3f3;border-bottom:1px solid #ddd">
+    <button id="open-btn">Open CSV…</button>
+    <span style="color:#666;margin-left:8px">or drag a .csv file here</span>
+  </div>
+  <iframe id="editor-frame" src="../csvEditorHtml/sandbox.html"
+          style="border:0;width:100%;height:calc(100vh - 33px);display:block"></iframe>
   <script type="module" src="editor-host.mjs"></script>
 </body>
 </html>

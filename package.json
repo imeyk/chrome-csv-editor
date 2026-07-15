@@ -859,7 +859,7 @@
 		"lint": "npx tslint -p . && npx tslint -p ./csvEditorHtml/tsconfig.json",
 		"promptUp": "node ./promtUploadbuild.js",
 		"buildBrowser": "node ./csvEditorHtml/out/browser/build/build.js",
-		"test:ext": "node --test extension/lib/"
+		"test:ext": "node --test extension/lib/*.test.mjs"
 	},
 	"dependencies": {
 		"@vscode/webview-ui-toolkit": "1.0.0",
