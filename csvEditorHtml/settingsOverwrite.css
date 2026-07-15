@@ -110,3 +110,52 @@ body.extension-settings-font-size .textarea {
 }
 
 /* END use font size from extension settings */
+/* ============================================================
+   Chrome extension: responsive toolbar refactor (both header rows).
+   Keeps the edit-csv look but lets the toolbars wrap gracefully
+   instead of overflowing / breaking words on narrow widths.
+   ============================================================ */
+
+/* --- Row 2: action buttons (Add row/col, Apply…, Hide comments, Tools, Help) --- */
+.table-action-buttons .separated-btns {
+	flex-wrap: wrap;
+	gap: 6px;
+	align-items: center;
+}
+/* gaps replace the manual per-button margin */
+.table-action-buttons .separated-btns > button:not(:last-child) {
+	margin-right: 0;
+}
+/* the trailing group (comments / tools / help) wraps as a unit too */
+.table-action-buttons .separated-btns > .flexed {
+	flex-wrap: wrap;
+	gap: 6px;
+	align-items: center;
+}
+/* let button labels size to their text (drop the fixed rem widths that squish
+   and wrap mid-word); buttons then wrap as whole units */
+.table-action-buttons vscode-button > span:not([slot]),
+.all-options .options-title vscode-button > span:not([slot]) {
+	width: auto !important;
+	white-space: nowrap;
+}
+/* status text may shrink; don't let it force horizontal overflow */
+#status-info-wrapper {
+	min-width: 0;
+	flex: 1 1 auto;
+}
+
+/* --- Row 1: options header (Read / Write / Preview + icon toolbar) --- */
+/* allow the icon toolbar in the Preview cell to wrap instead of overflowing */
+.options-title {
+	white-space: nowrap;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 4px 6px;
+}
+/* floated change indicators shouldn't force an over-wide line */
+.options-title #source-file-unwatched-indicator,
+.options-title #unsaved-changes-indicator {
+	float: none !important;
+}
