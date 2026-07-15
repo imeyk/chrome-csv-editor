@@ -9,6 +9,13 @@
   // main.ts: `if (typeof acquireVsCodeApi !== 'undefined') { vscode = acquireVsCodeApi() }`
   window.acquireVsCodeApi = function () { return api; };
 
+  // "Open CSV" button in the editor header delegates to the host frame, where the
+  // file picker + File System Access live. Called synchronously from the button's
+  // click so the user activation propagates to the parent frame.
+  window.csvHostOpen = function () {
+    window.parent.postMessage({ command: 'openFilePicker' }, '*');
+  };
+
   // Theme: follow the browser/OS light-dark preference. The editor's CSS keys
   // off the `vscode-dark` / `vscode-light` body classes (VS Code webview
   // convention); we just pick which one based on prefers-color-scheme.

@@ -159,3 +159,47 @@ body.extension-settings-font-size .textarea {
 .options-title #unsaved-changes-indicator {
 	float: none !important;
 }
+
+/* --- Preview cell: vertically center the icon toolbar controls --- */
+.options-title {
+	align-items: center;
+}
+.options-title > * {
+	align-self: center;
+}
+
+/* --- Row/column insert buttons: give them a border + breathing room so they
+   read as tappable buttons and aren't cramped against the Add button/edge --- */
+.table-action-buttons .row-col-insert-btns {
+	width: auto;
+	margin: 0 10px 0 4px;
+	gap: 3px;
+	justify-content: center;
+}
+.table-action-buttons .row-col-insert-btns vscode-button {
+	border: 1px solid var(--vscode-button-border, rgba(140, 140, 140, 0.55));
+	border-radius: 4px;
+	height: 22px;
+	min-width: 26px;
+	padding: 1px 5px;
+}
+.table-action-buttons .row-col-insert-btns vscode-button:hover {
+	border-color: var(--vscode-focusBorder, #6aa0ff);
+}
+/* row inserts stack vertically (up/down); column inserts sit left/right */
+#add-col-btn + .row-col-insert-btns {
+	flex-direction: row;
+}
+
+/* remove the divider border-left the theme draws on the insert-button group */
+.row-col-insert-btns,
+.vscode-dark .row-col-insert-btns,
+.vscode-light .row-col-insert-btns {
+	border-left: 0 !important;
+}
+/* center the caret glyph inside each insert button (was off-centre) */
+.table-action-buttons .row-col-insert-btns vscode-button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+}

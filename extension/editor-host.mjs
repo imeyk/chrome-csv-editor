@@ -86,7 +86,11 @@ async function loadFromFile(file) {
   sendCurrentFile();
 }
 
-openBtn.addEventListener('click', async () => {
+// Open a CSV via the File System Access picker (gives a handle for in-place save),
+// falling back to a hidden <input type=file>. Called from the host toolbar button
+// and from the editor header's "Open CSV" button (relayed via postMessage — the
+// child frame's click propagates user activation to this frame).
+async function openFilePicker() {
   if (window.showOpenFilePicker) {
     try {
       const [handle] = await window.showOpenFilePicker({
@@ -96,15 +100,16 @@ openBtn.addEventListener('click', async () => {
       return;
     } catch (err) {
       if (err && err.name === 'AbortError') return; // user cancelled
+      // Other errors (e.g. activation lost across frames): fall back to <input>.
     }
   }
-  // Fallback: hidden <input type=file>
   const input = document.createElement('input');
   input.type = 'file';
   input.accept = '.csv,.tsv,.txt,text/csv';
   input.addEventListener('change', () => { if (input.files[0]) loadFromFile(input.files[0]); });
   input.click();
-});
+}
+if (openBtn) openBtn.addEventListener('click', openFilePicker);
 
 // Drag-drop anywhere on the host page.
 window.addEventListener('dragover', (e) => { e.preventDefault(); });
