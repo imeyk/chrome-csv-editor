@@ -5,6 +5,11 @@ const SLICE_SIZE = 1024 * 1024; // 1 MB, matches upstream
 const frame = document.getElementById('editor-frame');
 const openBtn = document.getElementById('open-btn');
 
+// Load the sandboxed editor, passing the browser language so it can localize its
+// UI (the sandbox has no chrome.i18n; see csvEditorHtml/i18n-editor.js).
+const uiLang = (chrome.i18n.getUILanguage() || 'en').split('-')[0].toLowerCase();
+frame.src = '../csvEditorHtml/sandbox.html?lang=' + encodeURIComponent(uiLang);
+
 let currentFile = { name: 'edited.csv', text: '', handle: null };
 let editorReady = false;
 
