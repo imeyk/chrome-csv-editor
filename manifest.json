@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "Edit CSV",
+  "version": "0.1.0",
+  "description": "Open and edit CSV files with the edit-csv editor, fully offline.",
+  "action": { "default_title": "Edit CSV" },
+  "background": { "service_worker": "extension/background.mjs", "type": "module" },
+  "permissions": ["contextMenus", "webNavigation", "downloads", "storage"],
+  "icons": { "128": "extension/icons/icon128.png" },
+  "content_security_policy": {
+    "sandbox": "sandbox allow-scripts allow-forms allow-modals allow-popups; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; child-src 'self'"
+  },
+  "sandbox": { "pages": ["csvEditorHtml/sandbox.html"] },
+  "web_accessible_resources": [
+    {
+      "resources": ["csvEditorHtml/*", "thirdParty/*", "extension/editor.html"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}

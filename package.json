@@ -858,7 +858,8 @@
 		"test2": "echo 'to run the tests compile and then go to the debug tab and start Extension Tests'",
 		"lint": "npx tslint -p . && npx tslint -p ./csvEditorHtml/tsconfig.json",
 		"promptUp": "node ./promtUploadbuild.js",
-		"buildBrowser": "node ./csvEditorHtml/out/browser/build/build.js"
+		"buildBrowser": "node ./csvEditorHtml/out/browser/build/build.js",
+		"test:ext": "node --test extension/lib/"
 	},
 	"dependencies": {
 		"@vscode/webview-ui-toolkit": "1.0.0",
