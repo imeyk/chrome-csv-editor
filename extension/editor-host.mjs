@@ -23,10 +23,20 @@ async function loadPendingPayload() {
   }
   if (src && src.startsWith('fileurl:')) {
     const fileUrl = decodeURIComponent(src.slice('fileurl:'.length));
-    const res = await fetch(fileUrl);
-    const text = await res.text();
-    currentFile = { name: fileUrl.split('/').pop() || 'edited.csv', text, handle: null };
-    sendCurrentFile();
+    try {
+      const res = await fetch(fileUrl);
+      const text = await res.text();
+      currentFile = { name: fileUrl.split('/').pop() || 'edited.csv', text, handle: null };
+      sendCurrentFile();
+    } catch (err) {
+      // Most likely cause: "Allow access to file URLs" is disabled, or the file was removed.
+      console.warn('[host] failed to load file:// URL', err);
+      alert(
+        'Could not open the local CSV file.\n\n' +
+        'Make sure "Allow access to file URLs" is enabled for this extension ' +
+        '(chrome://extensions → Edit CSV → Details), then reload the file.'
+      );
+    }
   }
 }
 loadPendingPayload();
