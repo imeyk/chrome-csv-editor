@@ -156,5 +156,9 @@ window.addEventListener('message', (e) => {
     sendCurrentFile();
   } else if (msg.command === 'apply') {
     saveCsv(msg.csvContent);
+  } else if (msg.command === 'openFilePicker') {
+    // relayed from the editor header's "Open CSV" button (host-bridge.js);
+    // the child frame's click propagates user activation to this frame.
+    openFilePicker();
   }
 });

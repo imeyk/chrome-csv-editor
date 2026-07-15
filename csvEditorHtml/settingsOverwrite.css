@@ -222,3 +222,13 @@ body.extension-settings-font-size .textarea {
 	border-radius: 3px;
 	z-index: 2;
 }
+
+/* clickable toolbar / menu affordances should use the pointer cursor */
+.clickable,
+.table-action-buttons vscode-button,
+.all-options vscode-button,
+.options-title .clickable,
+.btn-with-menu-wrapper .menu-item,
+.row-col-insert-btns vscode-button {
+	cursor: pointer;
+}
