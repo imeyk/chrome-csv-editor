@@ -1,0 +1,11 @@
+{
+  "appDesc": {
+    "message": "Apri e modifica i file CSV scaricati con l'editor edit-csv integrato, completamente offline."
+  },
+  "ctxOpenInEditor": {
+    "message": "Apri nell'editor CSV"
+  },
+  "fileOpenError": {
+    "message": "Impossibile aprire il file CSV locale.\n\nAssicurati che \"Consenti l'accesso agli URL dei file\" sia attivo per questa estensione (chrome://extensions → Edit CSV → Dettagli), quindi riapri il file."
+  }
+}

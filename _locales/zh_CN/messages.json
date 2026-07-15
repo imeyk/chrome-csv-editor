@@ -1,0 +1,11 @@
+{
+  "appDesc": {
+    "message": "使用内置的 edit-csv 编辑器打开并编辑下载的 CSV 文件，完全离线运行。"
+  },
+  "ctxOpenInEditor": {
+    "message": "在 CSV 编辑器中打开"
+  },
+  "fileOpenError": {
+    "message": "无法打开本地 CSV 文件。\n\n请确认已为该扩展启用「允许访问文件网址」（chrome://extensions → Edit CSV → 详细信息），然后重新打开文件。"
+  }
+}

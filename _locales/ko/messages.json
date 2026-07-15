@@ -1,0 +1,11 @@
+{
+  "appDesc": {
+    "message": "다운로드한 CSV 파일을 내장된 edit-csv 편집기로 열고 편집하세요. 완전히 오프라인으로 작동합니다."
+  },
+  "ctxOpenInEditor": {
+    "message": "CSV 편집기에서 열기"
+  },
+  "fileOpenError": {
+    "message": "로컬 CSV 파일을 열 수 없습니다.\n\n이 확장 프로그램에 대해 「파일 URL에 대한 액세스 허용」이 설정되어 있는지 확인한 후(chrome://extensions → Edit CSV → 세부정보) 파일을 다시 여세요."
+  }
+}

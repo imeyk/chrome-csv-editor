@@ -2,7 +2,8 @@
   "manifest_version": 3,
   "name": "Edit CSV",
   "version": "0.1.0",
-  "description": "Open and edit CSV files with the edit-csv editor, fully offline.",
+  "default_locale": "en",
+  "description": "__MSG_appDesc__",
   "action": {
     "default_title": "Edit CSV",
     "default_icon": {

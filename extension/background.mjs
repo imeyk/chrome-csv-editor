@@ -5,7 +5,7 @@ const MENU_ID = 'open-csv-in-editor';
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
     id: MENU_ID,
-    title: 'Open in CSV editor',
+    title: chrome.i18n.getMessage('ctxOpenInEditor'),
     contexts: ['link'],
     targetUrlPatterns: ['*://*/*.csv', '*://*/*.tsv', 'file:///*.csv', 'file:///*.tsv']
   });

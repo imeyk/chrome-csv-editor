@@ -34,11 +34,7 @@ async function loadPendingPayload() {
     } catch (err) {
       // Most likely cause: "Allow access to file URLs" is disabled, or the file was removed.
       console.warn('[host] failed to load file:// URL', err);
-      alert(
-        'Could not open the local CSV file.\n\n' +
-        'Make sure "Allow access to file URLs" is enabled for this extension ' +
-        '(chrome://extensions → Edit CSV → Details), then reload the file.'
-      );
+      alert(chrome.i18n.getMessage('fileOpenError'));
     }
   }
 }
