@@ -203,3 +203,22 @@ body.extension-settings-font-size .textarea {
 	align-items: center;
 	justify-content: center;
 }
+
+/* delete-column icon: pin it to the right INSIDE each column header. It was an
+   inline span after the header text, so for the last column it overflowed past
+   the table's clipped right edge and became invisible on hover. */
+.handsontable th { position: relative; }
+.handsontable th .remove-col {
+	position: absolute;
+	right: 3px;
+	top: 50%;
+	transform: translateY(-50%);
+	margin-right: 0;
+}
+/* keep the pinned delete icon legible where it overlaps narrow header text */
+.handsontable th .remove-col {
+	background: inherit;
+	padding: 2px 3px;
+	border-radius: 3px;
+	z-index: 2;
+}
