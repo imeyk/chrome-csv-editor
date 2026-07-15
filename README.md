@@ -25,7 +25,20 @@ npx tsc -p ./csvEditorHtml/tsconfig.json
 # dayjs is already vendored under thirdParty/ — no extra step needed.
 ```
 
-If `npm run compile` fails because the VS Code extension `src/` does not type-check in your environment, compile only the editor with the command above.
+> **The compile step is required, not optional.** The editor's compiled output
+> (`csvEditorHtml/out/*.js`) is git-ignored and is **not** committed, so a fresh
+> clone has no editor code until you run `npx tsc`. Loading the extension before
+> compiling will open a blank editor.
+
+If `npm run compile` fails because the VS Code extension `src/` does not type-check
+in your environment, compile only the editor with the command above.
+
+### Verify the build (optional)
+
+```bash
+# Runs the host/lib unit suite (chunking, CSV-URL detection, save routing).
+node --test extension/lib/*.test.mjs
+```
 
 ---
 
@@ -70,7 +83,7 @@ To open CSV files from Finder in the editor automatically:
 
 After this, double-clicking a `.csv` in Finder opens it in Chrome, which the extension intercepts and redirects into the editor.
 
-> **Note:** The navigate-vs-download behavior of `file://` CSV URLs varies by Chrome version and platform. If the editor does not open, check that the "Allow access to file URLs" toggle is enabled and verify in `chrome://extensions` that no errors are shown in the extension's service worker. See the manual checklist in the project report for the full spike procedure.
+> **Note:** The navigate-vs-download behavior of `file://` CSV URLs varies by Chrome version and platform. On some builds Chrome downloads the file instead of navigating to it, in which case the interceptor cannot fire (see Known Limitations). If the editor does not open, work through the Troubleshooting section below.
 
 ---
 
@@ -86,6 +99,18 @@ After this, double-clicking a `.csv` in Finder opens it in Chrome, which the ext
 ## Everything Runs Offline
 
 The editor and all its assets are bundled in the extension package. No network requests are made except when you explicitly open a remote CSV URL via the context menu (which requires the remote server to permit the fetch).
+
+---
+
+## Troubleshooting
+
+| Symptom | Check |
+|---|---|
+| Editor tab is blank | Run the compile step (`npx tsc -p ./csvEditorHtml/tsconfig.json`) — `csvEditorHtml/out/` is git-ignored, so the editor code must be built after cloning. Then reload the extension. |
+| `file://` CSV downloads instead of opening | Confirm **Allow access to file URLs** is enabled (`chrome://extensions` → Edit CSV → Details). Some Chrome builds download `file://` CSVs before navigation fires; this is a known v1 limitation. |
+| "Could not open the local CSV file" alert | The **Allow access to file URLs** toggle is off, or the file was moved/removed. Enable the toggle and retry. |
+| Right-click **Open in CSV editor** does nothing on a remote link | The remote server likely blocked the fetch via CORS. Open `chrome://extensions` → Edit CSV → **service worker** and check the console for a CORS error. Download the file and use **Open CSV…** instead. |
+| Nothing happens at all | In `chrome://extensions`, confirm no errors are shown on the Edit CSV card and that the service worker is not marked "inactive/errored"; click **service worker** to inspect its console. |
 
 ---
 

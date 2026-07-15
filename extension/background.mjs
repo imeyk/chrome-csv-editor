@@ -30,9 +30,10 @@ chrome.action.onClicked.addListener(() => {
 });
 
 // Redirect navigations to local .csv files into the editor.
-// NOTE: The downloads fallback (chrome.downloads.onChanged) is a spike-contingent
-// addition — only needed if the spike (Step 1 in task-5-brief) shows Chrome downloads
-// file:// CSVs instead of navigating to them. Omitted here to avoid double-open risk.
+// NOTE: A downloads fallback (chrome.downloads.onChanged) is only needed on Chrome
+// builds that DOWNLOAD file:// CSVs instead of navigating to them (see "Known
+// Limitations" in the README). Omitted here to avoid a double-open on builds that
+// navigate normally.
 chrome.webNavigation.onBeforeNavigate.addListener((details) => {
   if (details.frameId !== 0) return;              // top frame only
   if (!details.url.startsWith('file://')) return;
