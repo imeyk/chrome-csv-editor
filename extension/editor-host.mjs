@@ -1,4 +1,5 @@
 import { buildCsvUpdateMessages } from './lib/chunk.mjs';
+import { resolveSaveTarget, deriveDownloadName } from './lib/save.mjs';
 
 const SLICE_SIZE = 1024 * 1024; // 1 MB, matches upstream
 const frame = document.getElementById('editor-frame');
@@ -58,6 +59,29 @@ window.addEventListener('drop', async (e) => {
   if (file) await loadFromFile(file);
 });
 
+async function writeViaHandle(handle, text) {
+  const writable = await handle.createWritable();
+  await writable.write(text);
+  await writable.close();
+}
+
+function downloadText(name, text) {
+  const url = URL.createObjectURL(new Blob([text], { type: 'text/csv' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = deriveDownloadName(name);
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+async function saveCsv(text) {
+  if (resolveSaveTarget(currentFile.handle) === 'fsa') {
+    try { await writeViaHandle(currentFile.handle, text); return; }
+    catch (err) { console.warn('[host] FSA write failed, downloading instead', err); }
+  }
+  downloadText(currentFile.name, text);
+}
+
 window.addEventListener('message', (e) => {
   if (e.source !== frame.contentWindow) return;
   const msg = e.data || {};
@@ -65,6 +89,6 @@ window.addEventListener('message', (e) => {
     editorReady = true;
     sendCurrentFile();
   } else if (msg.command === 'apply') {
-    console.log('[host] apply:', msg.saveSourceFile, msg.csvContent.length, 'chars');
+    saveCsv(msg.csvContent);
   }
 });
