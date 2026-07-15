@@ -29,4 +29,19 @@ chrome.action.onClicked.addListener(() => {
   chrome.tabs.create({ url: chrome.runtime.getURL('extension/editor.html') });
 });
 
+// Redirect navigations to local .csv files into the editor.
+// NOTE: The downloads fallback (chrome.downloads.onChanged) is a spike-contingent
+// addition — only needed if the spike (Step 1 in task-5-brief) shows Chrome downloads
+// file:// CSVs instead of navigating to them. Omitted here to avoid double-open risk.
+chrome.webNavigation.onBeforeNavigate.addListener((details) => {
+  if (details.frameId !== 0) return;              // top frame only
+  if (!details.url.startsWith('file://')) return;
+  if (!isCsvUrl(details.url)) return;
+  chrome.tabs.update(details.tabId, {
+    url: chrome.runtime.getURL(
+      `extension/editor.html?src=fileurl:${encodeURIComponent(details.url)}`
+    )
+  });
+}, { url: [{ schemes: ['file'] }] });
+
 export { openUrlInEditor }; // referenced by file:// interception in Task 5

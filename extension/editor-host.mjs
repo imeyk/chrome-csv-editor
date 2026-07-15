@@ -21,6 +21,13 @@ async function loadPendingPayload() {
       sendCurrentFile();
     }
   }
+  if (src && src.startsWith('fileurl:')) {
+    const fileUrl = decodeURIComponent(src.slice('fileurl:'.length));
+    const res = await fetch(fileUrl);
+    const text = await res.text();
+    currentFile = { name: fileUrl.split('/').pop() || 'edited.csv', text, handle: null };
+    sendCurrentFile();
+  }
 }
 loadPendingPayload();
 
