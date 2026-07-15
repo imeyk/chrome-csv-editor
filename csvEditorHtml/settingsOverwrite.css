@@ -232,3 +232,28 @@ body.extension-settings-font-size .textarea {
 .row-col-insert-btns vscode-button {
 	cursor: pointer;
 }
+
+/* top options toolbar: center every control vertically, incl. the glyph inside
+   icon buttons (single icons were sitting slightly above the taller steppers) */
+.options-title { align-items: center; min-height: 32px; }
+.options-title > * { align-self: center; }
+.all-options vscode-button,
+.options-title vscode-button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+}
+
+/* barely-visible borders on the option input fields (Delimiter, Comment, …) */
+input.vscode-text-field,
+.input.vscode-text-field,
+.options-content input[type="text"] {
+	border: 1px solid rgba(140, 140, 140, 0.22);
+	border-radius: 4px;
+	padding: 2px 6px;
+}
+input.vscode-text-field:focus,
+.input.vscode-text-field:focus {
+	border-color: var(--vscode-focusBorder, rgba(120, 160, 255, 0.7));
+	outline: none;
+}
