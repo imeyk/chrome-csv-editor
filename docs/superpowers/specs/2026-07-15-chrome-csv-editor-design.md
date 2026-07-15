@@ -44,14 +44,47 @@ is touched as little as possible so we can keep pulling updates.
 
 ## Architecture (Manifest V3)
 
-- **`editor.html` + adapted `csvEditorHtml`** — the editor UI.
-- **`host-bridge.js`** — replaces the VS Code bridge: feeds file content into the
-  interface `csvEditorHtml` expects, captures the serialized CSV on save, routes it
-  to File System Access or download.
-- **`background.js`** (service worker) — context menu, `webNavigation` interception
-  of `file://….csv`, optional downloads watcher.
-- **`manifest.json`** — permissions: `contextMenus`, `webNavigation`,
-  `downloads` (optional), plus file-URL access.
+The editor UI (`index.html`) contains **81 inline event-handler attributes**
+(`onclick=`, `onmousedown=`, …). MV3 extension-page CSP is `script-src 'self'`
+and forbids `unsafe-inline` for scripts, so these handlers would be blocked.
+Rewriting all 81 defeats the "minimal edits / easy upstream merges" goal.
+Solution: run the editor inside a **sandboxed iframe**
+(`content_security_policy.sandbox`, which *does* allow inline), driven by a
+privileged host page.
+
+- **`csvEditorHtml/sandbox.html`** — a copy of `csvEditorHtml/index.html` living
+  in the same folder so its relative paths (`out/*.js`, `../thirdParty/*`, `./main.css`)
+  resolve unchanged. Two edits only: (1) add `<script src="host-bridge.js">` right
+  before `out/main.js`; (2) repoint the two dayjs `<script>` tags to a vendored copy.
+  The editor's TypeScript is **not modified**.
+- **`csvEditorHtml/host-bridge.js`** — defines `window.acquireVsCodeApi()` returning
+  a shim whose `postMessage(msg)` forwards to `window.parent` (the host page). The
+  editor's own code (`main.ts`) then treats the shim as the VS Code API: it sends
+  `{command:'ready'}` and `{command:'apply', csvContent, saveSourceFile}`; inbound
+  `{command:'csvUpdate', csvContent:{text,sliceNr,totalSlices}}` is delivered by the
+  host via `window.postMessage` and picked up by the editor's existing
+  `handleVsCodeMessage` listener. No editor internals change.
+- **`extension/editor.html` + `editor-host.js`** — privileged chrome-origin host page.
+  Embeds `<iframe src="../csvEditorHtml/sandbox.html">`. Owns file loading (picker,
+  drag-drop, `file://` fetch, context-menu payload), chunks CSV into `csvUpdate`
+  messages to the iframe, receives `apply`, and routes saving to File System Access
+  (overwrite) or download (fallback). Has `chrome.*` access.
+- **`extension/background.js`** (service worker) — context menu, `webNavigation`
+  interception of `file://….csv`, optional downloads watcher.
+- **`manifest.json`** — MV3; permissions `contextMenus`, `webNavigation`,
+  `downloads` (optional); `content_security_policy.sandbox` for the sandbox page;
+  `web_accessible_resources` exposing the sandbox + assets; file-URL access.
+
+## Build
+
+`csvEditorHtml/out/*.js` is **not committed** — it must be built.
+
+- `npm install` — restores dev deps (TypeScript) and `dayjs` (loaded from
+  `node_modules`, not vendored in `thirdParty`).
+- `npm run compile` (or `tsc -p ./csvEditorHtml/tsconfig.json`) — compiles the
+  editor TS to `csvEditorHtml/out/*.js`.
+- Vendor `dayjs.min.js` + `customParseFormat.js` into `thirdParty/dayjs/` and point
+  `sandbox.html` at them so the packed extension has no `node_modules` dependency.
 
 ## Repository strategy
 
@@ -61,12 +94,17 @@ is touched as little as possible so we can keep pulling updates.
 
 ## Risks (validate during implementation)
 
+- **Sandbox iframe + bridge round-trip** — the whole architecture rests on the
+  sandboxed editor loading under the sandbox CSP, the `acquireVsCodeApi` shim
+  reaching the parent, and a CSV round-trip (load → edit → apply) working. Prove
+  this first with a walking-skeleton spike (Task 1) before building launch mechanisms.
 - **`file://….csv` navigation vs auto-download** — Chrome may download `.csv`
   instead of navigating. If so, intercept at the navigation level
   (`webNavigation`/redirect) rather than at render time. Confirm with a spike.
+- **File System Access API in a chrome-extension page** — confirm
+  `showSaveFilePicker`/handle write works from the host page; if unavailable in a
+  given context, fall back to download.
 - **Handsontable 6.x license** — the last MIT-licensed line; pin the version.
-- **File System Access API on a `file://` origin** — confirm availability; if
-  unavailable in that context, fall back to download.
 
 ## Testing
 
