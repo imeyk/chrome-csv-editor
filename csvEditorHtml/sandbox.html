@@ -20,6 +20,10 @@
 		html, body.vscode-dark { background: #1e1e1e; }
 		body.vscode-light { background: #ffffff; }
 	</style>
+	<!-- The VS Code build injects `initialConfig`/`initialVars` before this script;
+	     we run without them, so declare them (undefined) to avoid a ReferenceError
+	     in beforeDomLoaded.js. main.js then falls back to its built-in defaults. -->
+	<script>var initialConfig = undefined; var initialVars = undefined;</script>
 	<script src="out/beforeDomLoaded.js"></script>
 </head>
 
