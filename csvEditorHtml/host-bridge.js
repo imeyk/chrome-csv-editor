@@ -48,23 +48,31 @@
     var o = document.getElementById('ext-drop-overlay');
     if (o) o.style.display = show ? 'flex' : 'none';
   }
+  // NOTE: listeners run in the CAPTURE phase (3rd arg = true) and stopPropagation,
+  // so a file drop is intercepted before Handsontable's own drop handlers see it
+  // (those sit on the table and would otherwise fire first and throw on a File).
   var dragDepth = 0;
   window.addEventListener('dragenter', function (e) {
     if (!dragHasFiles(e)) return;
     e.preventDefault();
+    e.stopPropagation();
     dragDepth++;
     setOverlay(true);
-  });
+  }, true);
   window.addEventListener('dragover', function (e) {
-    if (dragHasFiles(e)) e.preventDefault();
-  });
-  window.addEventListener('dragleave', function () {
+    if (!dragHasFiles(e)) return;
+    e.preventDefault();
+    e.stopPropagation();
+  }, true);
+  window.addEventListener('dragleave', function (e) {
+    if (!dragHasFiles(e)) return;
     dragDepth = Math.max(0, dragDepth - 1);
     if (dragDepth === 0) setOverlay(false);
-  });
+  }, true);
   window.addEventListener('drop', function (e) {
     if (!dragHasFiles(e)) return;
     e.preventDefault();
+    e.stopPropagation();
     dragDepth = 0;
     setOverlay(false);
     var file = e.dataTransfer.files && e.dataTransfer.files[0];
@@ -74,5 +82,5 @@
       window.parent.postMessage({ command: 'openedFile', name: file.name, text: String(reader.result) }, '*');
     };
     reader.readAsText(file);
-  });
+  }, true);
 })();
