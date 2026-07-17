@@ -9,6 +9,21 @@
   // main.ts: `if (typeof acquireVsCodeApi !== 'undefined') { vscode = acquireVsCodeApi() }`
   window.acquireVsCodeApi = function () { return api; };
 
+  // The editor's message handler THROWS on any command it doesn't recognize
+  // (io.ts -> _error -> posts a 'msgBox', which — if the editor is ever running
+  // top-level, i.e. window.parent === window — loops straight back and cascades).
+  // Our host<->sandbox messages ('openedFile', 'openFilePicker', 'ready', 'apply', …)
+  // must never reach that handler. Swallow anything that is NOT one of the editor's
+  // real inbound commands, in the capture phase, before its bubble-phase listener runs.
+  var EDITOR_INBOUND = {
+    csvUpdate: 1, applyPress: 1, applyAndSavePress: 1,
+    changeFontSizeInPx: 1, sourceFileChanged: 1
+  };
+  window.addEventListener('message', function (e) {
+    var cmd = e && e.data && e.data.command;
+    if (cmd && !EDITOR_INBOUND[cmd]) e.stopImmediatePropagation();
+  }, true);
+
   // "Open CSV" button in the editor header delegates to the host frame, where the
   // file picker + File System Access live. Called synchronously from the button's
   // click so the user activation propagates to the parent frame.
@@ -79,7 +94,14 @@
     if (!file) return;
     var reader = new FileReader();
     reader.onload = function () {
-      window.parent.postMessage({ command: 'openedFile', name: file.name, text: String(reader.result) }, '*');
+      var text = String(reader.result);
+      if (window.parent && window.parent !== window) {
+        // inside editor.html's iframe: let the host load it (keeps save state)
+        window.parent.postMessage({ command: 'openedFile', name: file.name, text: text }, '*');
+      } else {
+        // editor opened top-level (no host frame): feed the editor directly
+        window.postMessage({ command: 'csvUpdate', csvContent: { text: text, sliceNr: 1, totalSlices: 1 } }, '*');
+      }
     };
     reader.readAsText(file);
   }, true);
