@@ -168,3 +168,31 @@ window.addEventListener('message', (e) => {
     sendCurrentFile();
   }
 });
+
+// One-time hint suggesting the user enable "Allow access to file URLs". Shown only
+// when file access is off AND the user hasn't dismissed it before (persisted in
+// chrome.storage.local); dismissing hides it for good.
+(async function fileAccessHint() {
+  const banner = document.getElementById('file-access-banner');
+  if (!banner) return;
+  const stored = await chrome.storage.local.get('fileAccessHintDismissed');
+  if (stored.fileAccessHintDismissed) return;
+  const allowed = await new Promise((res) => {
+    try { chrome.extension.isAllowedFileSchemeAccess(res); } catch { res(false); }
+  });
+  if (allowed) return; // already enabled — nothing to suggest
+
+  banner.querySelector('.fab-text').textContent = chrome.i18n.getMessage('fileAccessHintText');
+  const settingsBtn = document.getElementById('fab-open-settings');
+  const closeBtn = document.getElementById('fab-close');
+  settingsBtn.textContent = chrome.i18n.getMessage('fileAccessHintButton');
+  closeBtn.setAttribute('aria-label', chrome.i18n.getMessage('fileAccessHintDismiss'));
+  settingsBtn.addEventListener('click', () => {
+    chrome.tabs.create({ url: 'chrome://extensions/?id=' + chrome.runtime.id });
+  });
+  closeBtn.addEventListener('click', async () => {
+    banner.hidden = true;
+    await chrome.storage.local.set({ fileAccessHintDismissed: true });
+  });
+  banner.hidden = false;
+})();

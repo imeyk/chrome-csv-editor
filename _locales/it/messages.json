@@ -7,5 +7,14 @@
   },
   "fileOpenError": {
     "message": "Impossibile aprire il file CSV locale.\n\nAssicurati che \"Consenti l'accesso agli URL dei file\" sia attivo per questa estensione (chrome://extensions → Edit CSV → Dettagli), quindi riapri il file."
+  },
+  "fileAccessHintText": {
+    "message": "Suggerimento: attiva “Allow access to file URLs” per questa estensione così i file CSV scaricati e locali si aprono direttamente qui."
+  },
+  "fileAccessHintButton": {
+    "message": "Apri impostazioni"
+  },
+  "fileAccessHintDismiss": {
+    "message": "Ignora"
   }
 }

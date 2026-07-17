@@ -7,5 +7,14 @@
   },
   "fileOpenError": {
     "message": "Не удалось открыть локальный CSV-файл.\n\nУбедитесь, что для расширения включён доступ к URL файлов (chrome://extensions → Edit CSV → Подробности), затем откройте файл снова."
+  },
+  "fileAccessHintText": {
+    "message": "Совет: включите «Allow access to file URLs» для этого расширения, чтобы скачанные и локальные CSV-файлы открывались прямо здесь."
+  },
+  "fileAccessHintButton": {
+    "message": "Открыть настройки"
+  },
+  "fileAccessHintDismiss": {
+    "message": "Скрыть"
   }
 }

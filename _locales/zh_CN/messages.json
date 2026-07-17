@@ -7,5 +7,14 @@
   },
   "fileOpenError": {
     "message": "无法打开本地 CSV 文件。\n\n请确认已为该扩展启用「允许访问文件网址」（chrome://extensions → Edit CSV → 详细信息），然后重新打开文件。"
+  },
+  "fileAccessHintText": {
+    "message": "提示：为该扩展启用「Allow access to file URLs」，下载的和本地的 CSV 文件即可直接在此打开。"
+  },
+  "fileAccessHintButton": {
+    "message": "打开设置"
+  },
+  "fileAccessHintDismiss": {
+    "message": "关闭"
   }
 }
