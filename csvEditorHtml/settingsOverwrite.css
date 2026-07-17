@@ -257,3 +257,30 @@ input.vscode-text-field:focus,
 	border-color: var(--vscode-focusBorder, rgba(120, 160, 255, 0.7));
 	outline: none;
 }
+
+/* Drag-and-drop overlay: dim the editor and prompt while a file is dragged over */
+#ext-drop-overlay {
+	display: none;
+	position: fixed;
+	inset: 0;
+	z-index: 99999;
+	align-items: center;
+	justify-content: center;
+	background: rgba(0, 0, 0, 0.55);
+	backdrop-filter: blur(1px);
+	pointer-events: none;
+}
+#ext-drop-overlay .ext-drop-inner {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.75rem;
+	padding: 2rem 2.6rem;
+	border: 2px dashed rgba(255, 255, 255, 0.7);
+	border-radius: 14px;
+	color: #fff;
+	background: rgba(20, 20, 20, 0.35);
+}
+#ext-drop-overlay .ext-drop-caption {
+	font: 600 1.15rem system-ui, -apple-system, "Segoe UI", sans-serif;
+}

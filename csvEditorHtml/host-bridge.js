@@ -35,4 +35,44 @@
     if (mq.addEventListener) mq.addEventListener('change', applyTheme);
     else if (mq.addListener) mq.addListener(applyTheme);
   }
+
+  // Drag & drop a .csv onto the editor. Handled here (inside the sandboxed iframe)
+  // because the iframe covers the page, so OS drag events land here — not on the
+  // host frame. We read the file locally and hand its text to the host, which
+  // renders it (no File System Access handle → saving falls back to download).
+  function dragHasFiles(e) {
+    var t = e.dataTransfer && e.dataTransfer.types;
+    return t && Array.prototype.indexOf.call(t, 'Files') !== -1;
+  }
+  function setOverlay(show) {
+    var o = document.getElementById('ext-drop-overlay');
+    if (o) o.style.display = show ? 'flex' : 'none';
+  }
+  var dragDepth = 0;
+  window.addEventListener('dragenter', function (e) {
+    if (!dragHasFiles(e)) return;
+    e.preventDefault();
+    dragDepth++;
+    setOverlay(true);
+  });
+  window.addEventListener('dragover', function (e) {
+    if (dragHasFiles(e)) e.preventDefault();
+  });
+  window.addEventListener('dragleave', function () {
+    dragDepth = Math.max(0, dragDepth - 1);
+    if (dragDepth === 0) setOverlay(false);
+  });
+  window.addEventListener('drop', function (e) {
+    if (!dragHasFiles(e)) return;
+    e.preventDefault();
+    dragDepth = 0;
+    setOverlay(false);
+    var file = e.dataTransfer.files && e.dataTransfer.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function () {
+      window.parent.postMessage({ command: 'openedFile', name: file.name, text: String(reader.result) }, '*');
+    };
+    reader.readAsText(file);
+  });
 })();

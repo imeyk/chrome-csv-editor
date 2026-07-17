@@ -160,5 +160,11 @@ window.addEventListener('message', (e) => {
     // relayed from the editor header's "Open CSV" button (host-bridge.js);
     // the child frame's click propagates user activation to this frame.
     openFilePicker();
+  } else if (msg.command === 'openedFile') {
+    // a file was dropped onto the editor (read inside the sandbox). No FS handle,
+    // so saving uses the download fallback.
+    currentFile = { name: msg.name || 'edited.csv', text: msg.text || '', handle: null };
+    markLoaded();
+    sendCurrentFile();
   }
 });

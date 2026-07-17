@@ -25,7 +25,8 @@ window.__EDITOR_I18N__ = {
   "QuoteChar": "Символ кавычки",
   "EscapeChar": "Символ экранирования",
   "Encoding": "Кодировка",
-  "Reset data and apply read options": "Сбросить данные и применить параметры чтения"
+  "Reset data and apply read options": "Сбросить данные и применить параметры чтения",
+  "Drop the CSV file to open it": "Перетащите CSV-файл сюда, чтобы открыть"
  },
  "es": {
   "Read options": "Opciones de lectura",
@@ -50,7 +51,8 @@ window.__EDITOR_I18N__ = {
   "QuoteChar": "Carácter de comilla",
   "EscapeChar": "Carácter de escape",
   "Encoding": "Codificación",
-  "Reset data and apply read options": "Restablecer datos y aplicar opciones de lectura"
+  "Reset data and apply read options": "Restablecer datos y aplicar opciones de lectura",
+  "Drop the CSV file to open it": "Suelta el archivo CSV para abrirlo"
  },
  "de": {
   "Read options": "Leseoptionen",
@@ -75,7 +77,8 @@ window.__EDITOR_I18N__ = {
   "QuoteChar": "Anführungszeichen",
   "EscapeChar": "Escape-Zeichen",
   "Encoding": "Kodierung",
-  "Reset data and apply read options": "Daten zurücksetzen und Leseoptionen anwenden"
+  "Reset data and apply read options": "Daten zurücksetzen und Leseoptionen anwenden",
+  "Drop the CSV file to open it": "CSV-Datei hier ablegen zum Öffnen"
  },
  "fr": {
   "Read options": "Options de lecture",
@@ -100,7 +103,8 @@ window.__EDITOR_I18N__ = {
   "QuoteChar": "Caractère de guillemet",
   "EscapeChar": "Caractère d'échappement",
   "Encoding": "Encodage",
-  "Reset data and apply read options": "Réinitialiser les données et appliquer les options de lecture"
+  "Reset data and apply read options": "Réinitialiser les données et appliquer les options de lecture",
+  "Drop the CSV file to open it": "Déposez le fichier CSV pour l'ouvrir"
  },
  "pt": {
   "Read options": "Opções de leitura",
@@ -125,7 +129,8 @@ window.__EDITOR_I18N__ = {
   "QuoteChar": "Caractere de aspas",
   "EscapeChar": "Caractere de escape",
   "Encoding": "Codificação",
-  "Reset data and apply read options": "Redefinir dados e aplicar opções de leitura"
+  "Reset data and apply read options": "Redefinir dados e aplicar opções de leitura",
+  "Drop the CSV file to open it": "Solte o arquivo CSV para abri-lo"
  },
  "it": {
   "Read options": "Opzioni di lettura",
@@ -150,7 +155,8 @@ window.__EDITOR_I18N__ = {
   "QuoteChar": "Carattere virgoletta",
   "EscapeChar": "Carattere di escape",
   "Encoding": "Codifica",
-  "Reset data and apply read options": "Reimposta dati e applica opzioni di lettura"
+  "Reset data and apply read options": "Reimposta dati e applica opzioni di lettura",
+  "Drop the CSV file to open it": "Rilascia il file CSV per aprirlo"
  },
  "ja": {
   "Read options": "読み込みオプション",
@@ -175,7 +181,8 @@ window.__EDITOR_I18N__ = {
   "QuoteChar": "引用符文字",
   "EscapeChar": "エスケープ文字",
   "Encoding": "エンコード",
-  "Reset data and apply read options": "データをリセットして読み込みオプションを適用"
+  "Reset data and apply read options": "データをリセットして読み込みオプションを適用",
+  "Drop the CSV file to open it": "CSV ファイルをドロップして開く"
  },
  "zh": {
   "Read options": "读取选项",
@@ -200,7 +207,8 @@ window.__EDITOR_I18N__ = {
   "QuoteChar": "引号字符",
   "EscapeChar": "转义字符",
   "Encoding": "编码",
-  "Reset data and apply read options": "重置数据并应用读取选项"
+  "Reset data and apply read options": "重置数据并应用读取选项",
+  "Drop the CSV file to open it": "拖放 CSV 文件以打开"
  },
  "ko": {
   "Read options": "읽기 옵션",
@@ -225,7 +233,8 @@ window.__EDITOR_I18N__ = {
   "QuoteChar": "따옴표 문자",
   "EscapeChar": "이스케이프 문자",
   "Encoding": "인코딩",
-  "Reset data and apply read options": "데이터 재설정 및 읽기 옵션 적용"
+  "Reset data and apply read options": "데이터 재설정 및 읽기 옵션 적용",
+  "Drop the CSV file to open it": "CSV 파일을 놓아 열기"
  }
 };
 
@@ -246,9 +255,6 @@ window.__EDITOR_I18N__ = {
       n.nodeValue = n.nodeValue.replace(trimmed, dict[trimmed]); // keep surrounding spaces
     });
   }
-  // run now (script sits at end of body) and once more after the editor finishes
-  // wiring up, in case any label is (re)written late. Idempotent: translated text
-  // no longer matches an English key.
   apply();
   if (document.readyState !== 'complete') window.addEventListener('load', apply);
   setTimeout(apply, 400);
