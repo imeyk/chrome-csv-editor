@@ -13,6 +13,25 @@ ROOT="$(pwd)"
 DIST="$ROOT/dist"
 STAGE="$DIST/chrome-csv-editor"
 
+# Bump the manifest patch version (x.y.Z -> x.y.Z+1) so each build is a valid
+# Web Store re-upload. Skip with NO_BUMP=1 (e.g. for local test builds).
+# Only the version substring is rewritten, so the rest of manifest.json is untouched.
+if [ "${NO_BUMP:-}" != "1" ]; then
+  echo "[0/4] Bumping patch version…"
+  python3 - <<'PY'
+import re
+p = "manifest.json"
+s = open(p, encoding="utf-8").read()
+def bump(m):
+    a, b, c = m.group(1).split(".")
+    return '"version": "%s.%s.%d"' % (a, b, int(c) + 1)
+s, n = re.subn(r'"version":\s*"(\d+\.\d+\.\d+)"', bump, s, count=1)
+assert n == 1, "manifest.json version not found / not x.y.z"
+open(p, "w", encoding="utf-8").write(s)
+print("  version ->", re.search(r'"version":\s*"([^"]+)"', s).group(1))
+PY
+fi
+
 echo "[1/4] Building the editor (csvEditorHtml/out)…"
 npx tsc -p ./csvEditorHtml/tsconfig.json
 
