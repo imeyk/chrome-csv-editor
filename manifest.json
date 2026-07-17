@@ -14,7 +14,7 @@
     }
   },
   "background": { "service_worker": "extension/background.mjs", "type": "module" },
-  "permissions": ["contextMenus", "webNavigation", "storage"],
+  "permissions": ["contextMenus", "webNavigation", "storage", "downloads"],
   "host_permissions": ["file:///*"],
   "icons": {
     "16": "extension/icons/icon16.png",

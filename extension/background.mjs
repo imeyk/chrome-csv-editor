@@ -29,11 +29,8 @@ chrome.action.onClicked.addListener(() => {
   chrome.tabs.create({ url: chrome.runtime.getURL('extension/editor.html') });
 });
 
-// Redirect navigations to local .csv files into the editor.
-// NOTE: A downloads fallback (chrome.downloads.onChanged) is only needed on Chrome
-// builds that DOWNLOAD file:// CSVs instead of navigating to them (see "Known
-// Limitations" in the README). Omitted here to avoid a double-open on builds that
-// navigate normally.
+// Redirect navigations to local .csv files into the editor (covers opening a
+// file:// CSV in a tab). If Chrome NAVIGATES to it, this catches it here.
 chrome.webNavigation.onBeforeNavigate.addListener((details) => {
   if (details.frameId !== 0) return;              // top frame only
   if (!details.url.startsWith('file://')) return;
@@ -44,5 +41,25 @@ chrome.webNavigation.onBeforeNavigate.addListener((details) => {
     )
   });
 }, { url: [{ schemes: ['file'] }] });
+
+// Open finished .csv/.tsv downloads in the editor. Dropping a CSV onto Chrome (or
+// clicking a CSV link) usually DOWNLOADS it rather than navigating, so the
+// webNavigation hook above can't fire — this is what actually opens those files.
+// Requires "Allow access to file URLs" so the editor can read the local file.
+function fileUrlFromPath(p) {
+  let s = p.replace(/\\/g, '/');
+  if (!s.startsWith('/')) s = '/' + s; // Windows: C:/… -> /C:/…
+  return 'file://' + s;
+}
+chrome.downloads.onChanged.addListener(async (delta) => {
+  if (!delta.state || delta.state.current !== 'complete') return;
+  const [item] = await chrome.downloads.search({ id: delta.id });
+  if (!item || !item.filename) return;
+  const fileUrl = fileUrlFromPath(item.filename);
+  if (!isCsvUrl(fileUrl)) return;
+  await chrome.tabs.create({
+    url: chrome.runtime.getURL(`extension/editor.html?src=fileurl:${encodeURIComponent(fileUrl)}`)
+  });
+});
 
 export { openUrlInEditor }; // referenced by file:// interception in Task 5
