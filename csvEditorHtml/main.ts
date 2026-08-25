@@ -18,6 +18,16 @@ const defaultInitialVars: InitialVars = {
 }
 
 declare var acquireVsCodeApi: any
+//see csvEditorHtml/detect-delimiter.js (loaded as a classic script before out/main.js)
+declare function detectCsvDelimiter(
+	text: string,
+	options?: {
+		candidates?: string[],
+		quoteChar?: string,
+		comments?: string | false,
+		maxRecords?: number,
+	}
+): string | null
 declare var initialContent: string
 declare var initialConfig: EditCsvConfig | undefined
 // declare var regression: RegressionLib
@@ -416,6 +426,15 @@ const urlRegex = /(https?):\/\/[-A-Z0-9+&@#\/%?=~_|$!:,.;]*[A-Z0-9+&@#\/%=~_|$]/
 let previousSelectedCell: HotCellPos | null = null
 let previousViewportOffsets: HotViewportOffsetInPx | null = null
 let previousManualRowHeights: number[] | null = null
+
+/**
+ * the row height (in px) the browser actually produces for a normal (not hidden,
+ * not manually resized) row -- null until it was measured once
+ *
+ * we must declare exactly this height via the `rowHeights` option, see
+ * {@link syncMeasuredRowHeight} for why
+ */
+let measuredRowHeightInPx: number | null = null
 
 //set defaults when we are in browser
 setCsvReadOptionsInitial(defaultCsvReadOptions)

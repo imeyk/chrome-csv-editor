@@ -57,6 +57,33 @@ function toggleOptionsBar(shouldCollapse?: boolean) {
 
 /* --- read options --- */
 
+/**
+ * Re-reads the file with the current read options and re-renders the table.
+ *
+ * Changing a read option used to only update {@link defaultCsvReadOptions}: the open table
+ * kept the delimiter it was parsed with until "Reset data and apply read options" was
+ * clicked, which looks exactly like the option being ignored.
+ *
+ * Re-reading throws away unsaved edits, so when there are any we open the existing confirm
+ * dialog instead of applying silently.
+ */
+function applyReadOptionsToCurrentTable() {
+
+	//nothing rendered yet (no file received) -> the options will be used by the first parse
+	if (!hot) return
+
+	if (getHasAnyChangesUi()) {
+		toggleAskReadAgainModal(true)
+		return
+	}
+
+	storeHotSelectedCellAndScrollPosition()
+	startRenderData()
+}
+
+//the text inputs fire on every keystroke, so wait until the user stopped typing
+const debouncedApplyReadOptions = debounce(applyReadOptionsToCurrentTable, 400)
+
 function getHasHeaderRow() {
 	return headerRowWithIndex !== null
 }
@@ -286,11 +313,13 @@ function tryApplyHasHeader() {
 function setDelimiterString() {
 	const el = _getById('delimiter-string') as HTMLInputElement
 	defaultCsvReadOptions.delimiter = el.value
+	debouncedApplyReadOptions()
 }
 
 function setCommentString() {
 	const el = _getById('comment-string') as HTMLInputElement
 	defaultCsvReadOptions.comments = el.value === '' ? false : el.value
+	debouncedApplyReadOptions()
 }
 
 function setQuoteCharString() {
@@ -299,6 +328,7 @@ function setQuoteCharString() {
 	ensuredSingleCharacterString(el)
 
 	defaultCsvReadOptions.quoteChar = el.value
+	debouncedApplyReadOptions()
 }
 
 function setEscapeCharString() {
@@ -307,6 +337,7 @@ function setEscapeCharString() {
 	ensuredSingleCharacterString(el)
 
 	defaultCsvReadOptions.escapeChar = el.value
+	debouncedApplyReadOptions()
 }
 
 /**
@@ -328,6 +359,7 @@ function setReadDelimiter(delimiter: string) {
 	const el = _getById('delimiter-string') as HTMLInputElement
 	el.value = delimiter
 	defaultCsvReadOptions.delimiter = delimiter
+	debouncedApplyReadOptions()
 }
 
 /* --- write options --- */
@@ -434,6 +466,7 @@ function reRenderTable(callback?: () => void) {
 	statusInfo.innerText = `Rendering table...`
 	call_after_DOM_updated(() => {
 		hot!.render()
+		syncMeasuredRowHeight()
 		setTimeout(() => {
 			statusInfo.innerText = ``
 
@@ -517,6 +550,88 @@ function forceAutoResizeRows() {
 	hot.view.wt.wtOverlays.adjustElementsSize(true);
 
 	//we don't run before and after resize hooks... no idea what they do
+}
+
+/**
+ * the height we declare for a normal row via the `rowHeights` option
+ * see https://handsontable.com/docs/6.2.2/Options.html#rowHeights
+ *
+ * once {@link syncMeasuredRowHeight} has measured what the browser really renders
+ * we use that value instead of the estimate
+ */
+function getDefaultRowHeight(): number {
+
+	if (measuredRowHeightInPx !== null) return measuredRowHeightInPx
+
+	let defaultHeight = (16 + fontSizeAddModifier) + 7
+
+	//there are some hard coded values in the handsontable source code for cell height?
+	//so, we set it to the same value as the default height
+	return Math.max(23, defaultHeight)
+}
+
+/**
+ * the height the browser really gives a rendered row, or null if we cannot measure it
+ *
+ * rows can legitimately differ (hidden comment rows are ~0, manually resized rows are
+ * whatever the user dragged them to), so we take the most common height of the rendered
+ * rows and skip the very first one (it carries an extra top border)
+ */
+function _measureRenderedRowHeight(): number | null {
+
+	const rows = document.querySelectorAll(`#csv-editor-wrapper .ht_master tbody tr`)
+	if (rows.length === 0) return null
+
+	const counts = new Map<number, number>()
+
+	//skip the first row, it has an additional top border
+	for (let i = rows.length > 1 ? 1 : 0; i < rows.length && i < 21; i++) {
+		const height = Math.round(rows[i].getBoundingClientRect().height)
+		//hidden rows report ~0
+		if (height <= 1) continue
+		counts.set(height, (counts.get(height) ?? 0) + 1)
+	}
+
+	let bestHeight: number | null = null
+	let bestCount = 0
+	counts.forEach((count, height) => {
+		if (count > bestCount) {
+			bestCount = count
+			bestHeight = height
+		}
+	})
+
+	return bestHeight
+}
+
+/**
+ * makes the declared row height match the rendered one
+ *
+ * handsontable renders a row a few px taller than the height we declare via `rowHeights`
+ * (the cell padding + border are added on top of it). the virtual renderer then mixes
+ * BOTH numbers: rows inside the viewport contribute their real, measured height while all
+ * other rows contribute the declared one. so the scrollable area keeps growing while the
+ * user scrolls and the scrollbar thumb no longer matches the real scroll position
+ * (and the drift does not go away when scrolling back).
+ *
+ * measuring one rendered row and then declaring THAT height keeps both in sync, which
+ * keeps the scrollbar size and the thumb position correct.
+ */
+function syncMeasuredRowHeight() {
+
+	if (!hot) return
+
+	const realHeight = _measureRenderedRowHeight()
+	if (realHeight === null) return
+	if (realHeight === getDefaultRowHeight()) return
+
+	measuredRowHeightInPx = realHeight
+	hot.render()
+
+	//render() alone re-uses the cached scrollable size, so the scrollbar would only pick
+	//up the new row height once the user starts scrolling
+	//@ts-ignore
+	hot.view.wt.wtOverlays.adjustElementsSize(true)
 }
 
 
@@ -1892,12 +2007,7 @@ function displayData(this: any, csvParseResult: ExtendedCsvParseResult | null, c
 
 		rowHeights: function (visualRowIndex: number) {
 
-			//see https://handsontable.com/docs/6.2.2/Options.html#rowHeights
-			let defaultHeight = (16 + fontSizeAddModifier) + 7
-
-			//there are some hard coded values in the handsontable source code for cell height?
-			//so, we set it to the same value as the default height
-			defaultHeight = Math.max(23, defaultHeight)
+			const defaultHeight = getDefaultRowHeight()
 
 			if (!hot) return defaultHeight
 
@@ -2091,9 +2201,11 @@ function displayData(this: any, csvParseResult: ExtendedCsvParseResult | null, c
 	//make sure we see something (right size)...
 	onResizeGrid()
 
-	//the headers only exist in the dom now, so this is the first point where we can check
-	//whether the column name actually fits next to the delete icon
+	//rows and headers only exist in the dom now, so this is the first point where we can
+	//measure them: the real row height, and whether the column name fits next to the
+	//delete icon
 	call_after_DOM_updated(() => {
+		syncMeasuredRowHeight()
 		growColumnsToFitHeaders()
 	})
 
@@ -2844,6 +2956,9 @@ function changeFontSizeInPx(fontSizeInPx: number) {
 		currentFontSize = fontSizeInPx
 	}
 
+	//the rows will have a different height now, so measure them again
+	measuredRowHeightInPx = null
+
 	reRenderTable()
 }
 
@@ -3480,6 +3595,9 @@ function _changeTableContentZoom(amount: number) {
 
 function __changeTableContentZoom(newScalerFinal: number) {
 	fontSizeAddModifier = newScalerFinal
+
+	//the rows will have a different height now, so measure them again
+	measuredRowHeightInPx = null
 
 	document.documentElement.style.setProperty('--hot-font-size-add-modifier', `${fontSizeAddModifier}px`)
 
