@@ -18,6 +18,16 @@ const defaultInitialVars: InitialVars = {
 }
 
 declare var acquireVsCodeApi: any
+//see csvEditorHtml/detect-delimiter.js (loaded as a classic script before out/main.js)
+declare function detectCsvDelimiter(
+	text: string,
+	options?: {
+		candidates?: string[],
+		quoteChar?: string,
+		comments?: string | false,
+		maxRecords?: number,
+	}
+): string | null
 declare var initialContent: string
 declare var initialConfig: EditCsvConfig | undefined
 // declare var regression: RegressionLib
