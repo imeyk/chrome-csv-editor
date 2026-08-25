@@ -1,4 +1,5 @@
 import { isCsvUrl, filenameFromUrl } from './lib/csv-url.mjs';
+import { decodeCsvBytes } from './lib/decode-text.mjs';
 import { isLocalCsvDownload, originalUrlOfDownload } from './lib/local-download.mjs';
 
 const MENU_ID = 'open-csv-in-editor';
@@ -19,9 +20,16 @@ chrome.contextMenus.onClicked.addListener(async (info) => {
 
 async function openUrlInEditor(url) {
   const res = await fetch(url);
-  const text = await res.text();
+  // bytes, not res.text(): that would always decode as utf-8 and mangle a csv saved in
+  // windows-1251 & friends
+  const decoded = decodeCsvBytes(await res.arrayBuffer());
   const key = 'payload_' + crypto.randomUUID();
-  await chrome.storage.session.set({ [key]: { name: filenameFromUrl(url), text } });
+  await chrome.storage.session.set({
+    [key]: {
+      name: filenameFromUrl(url), text: decoded.text,
+      encoding: decoded.encoding, hadBom: decoded.hadBom,
+    }
+  });
   await chrome.tabs.create({ url: chrome.runtime.getURL(`extension/editor.html?src=session:${key}`) });
 }
 

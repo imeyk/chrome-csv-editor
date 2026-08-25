@@ -93,16 +93,21 @@
     var file = e.dataTransfer.files && e.dataTransfer.files[0];
     if (!file) return;
     var reader = new FileReader();
-    reader.onload = function () {
-      var text = String(reader.result);
-      if (window.parent && window.parent !== window) {
-        // inside editor.html's iframe: let the host load it (keeps save state)
-        window.parent.postMessage({ command: 'openedFile', name: file.name, text: text }, '*');
-      } else {
-        // editor opened top-level (no host frame): feed the editor directly
+    if (window.parent && window.parent !== window) {
+      // inside editor.html's iframe: hand the RAW BYTES to the host, which guesses the
+      // encoding (a csv is not always utf-8) and keeps the save state
+      reader.onload = function () {
+        window.parent.postMessage(
+          { command: 'openedFile', name: file.name, buffer: reader.result }, '*', [reader.result]);
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      // editor opened top-level (no host frame): feed the editor directly
+      reader.onload = function () {
+        var text = String(reader.result);
         window.postMessage({ command: 'csvUpdate', csvContent: { text: text, sliceNr: 1, totalSlices: 1 } }, '*');
-      }
-    };
-    reader.readAsText(file);
+      };
+      reader.readAsText(file);
+    }
   }, true);
 })();

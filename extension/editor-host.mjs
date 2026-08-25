@@ -1,5 +1,6 @@
 import { buildCsvUpdateMessages } from './lib/chunk.mjs';
 import { resolveSaveTarget, deriveDownloadName } from './lib/save.mjs';
+import { decodeCsvBytes, encodeCsvText } from './lib/decode-text.mjs';
 
 const SLICE_SIZE = 1024 * 1024; // 1 MB, matches upstream
 const frame = document.getElementById('editor-frame');
@@ -10,7 +11,9 @@ const openBtn = document.getElementById('open-btn');
 const uiLang = (chrome.i18n.getUILanguage() || 'en').split('-')[0].toLowerCase();
 frame.src = '../csvEditorHtml/sandbox.html?lang=' + encodeURIComponent(uiLang);
 
-let currentFile = { name: 'edited.csv', text: '', handle: null };
+// `encoding`/`hadBom` are how the file was READ, so it can be written back the same way
+// instead of silently becoming utf-8 (see extension/lib/decode-text.mjs)
+let currentFile = { name: 'edited.csv', text: '', handle: null, encoding: 'utf-8', hadBom: false };
 let editorReady = false;
 
 async function loadPendingPayload() {
@@ -21,7 +24,10 @@ async function loadPendingPayload() {
     const stored = await chrome.storage.session.get(key);
     const payload = stored[key];
     if (payload) {
-      currentFile = { name: payload.name, text: payload.text, handle: null };
+      currentFile = {
+        name: payload.name, text: payload.text, handle: null,
+        encoding: payload.encoding || 'utf-8', hadBom: payload.hadBom || false,
+      };
       await chrome.storage.session.remove(key);
       markLoaded();
       sendCurrentFile();
@@ -32,8 +38,14 @@ async function loadPendingPayload() {
     try {
       // fetch() does not support the file: scheme in Chrome — use XHR, which
       // extensions may use to read file:// when "Allow access to file URLs" is on.
-      const text = await readTextViaXhr(fileUrl);
-      currentFile = { name: fileUrl.split('/').pop() || 'edited.csv', text, handle: null };
+      // Read BYTES: a csv is not necessarily utf-8 (windows-1251 is very common).
+      const bytes = await readBytesViaXhr(fileUrl);
+      const decoded = decodeCsvBytes(bytes);
+      currentFile = {
+        name: fileUrl.split('/').pop() || 'edited.csv',
+        text: decoded.text, handle: null,
+        encoding: decoded.encoding, hadBom: decoded.hadBom,
+      };
       markLoaded();
       sendCurrentFile();
     } catch (err) {
@@ -54,15 +66,16 @@ function sendCurrentFile() {
   }
 }
 
-// Read a URL as text via XHR. Needed for file:// (fetch rejects the file scheme).
-function readTextViaXhr(url) {
+// Read a URL as BYTES via XHR. Needed for file:// (fetch rejects the file scheme);
+// bytes rather than text because decodeCsvBytes() has to guess the encoding.
+function readBytesViaXhr(url) {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open('GET', url);
-    xhr.responseType = 'text';
+    xhr.responseType = 'arraybuffer';
     xhr.onload = () => {
       // file:// responses report status 0 on success.
-      if (xhr.status === 0 || (xhr.status >= 200 && xhr.status < 300)) resolve(xhr.responseText);
+      if (xhr.status === 0 || (xhr.status >= 200 && xhr.status < 300)) resolve(xhr.response);
       else reject(new Error('XHR status ' + xhr.status + ' for ' + url));
     };
     xhr.onerror = () => reject(new Error('XHR failed for ' + url));
@@ -78,13 +91,19 @@ function markLoaded() {
 
 async function loadFromHandle(handle) {
   const file = await handle.getFile();
-  currentFile = { name: file.name, text: await file.text(), handle };
-  markLoaded();
-  sendCurrentFile();
+  await loadFile(file, handle);
 }
 
 async function loadFromFile(file) {
-  currentFile = { name: file.name, text: await file.text(), handle: null };
+  await loadFile(file, null);
+}
+
+async function loadFile(file, handle) {
+  const decoded = decodeCsvBytes(await file.arrayBuffer());
+  currentFile = {
+    name: file.name, text: decoded.text, handle,
+    encoding: decoded.encoding, hadBom: decoded.hadBom,
+  };
   markLoaded();
   sendCurrentFile();
 }
@@ -127,14 +146,14 @@ window.addEventListener('drop', async (e) => {
   if (file) await loadFromFile(file);
 });
 
-async function writeViaHandle(handle, text) {
+async function writeViaHandle(handle, bytes) {
   const writable = await handle.createWritable();
-  await writable.write(text);
+  await writable.write(bytes);
   await writable.close();
 }
 
-function downloadText(name, text) {
-  const url = URL.createObjectURL(new Blob([text], { type: 'text/csv' }));
+function downloadBytes(name, bytes) {
+  const url = URL.createObjectURL(new Blob([bytes], { type: 'text/csv' }));
   const a = document.createElement('a');
   a.href = url;
   a.download = deriveDownloadName(name);
@@ -143,11 +162,14 @@ function downloadText(name, text) {
 }
 
 async function saveCsv(text) {
+  // write it back in the encoding it was read with, so a windows-1251 file stays
+  // windows-1251 for whatever else opens it
+  const bytes = encodeCsvText(text, currentFile);
   if (resolveSaveTarget(currentFile.handle) === 'fsa') {
-    try { await writeViaHandle(currentFile.handle, text); return; }
+    try { await writeViaHandle(currentFile.handle, bytes); return; }
     catch (err) { console.warn('[host] FSA write failed, downloading instead', err); }
   }
-  downloadText(currentFile.name, text);
+  downloadBytes(currentFile.name, bytes);
 }
 
 window.addEventListener('message', (e) => {
@@ -164,8 +186,15 @@ window.addEventListener('message', (e) => {
     openFilePicker();
   } else if (msg.command === 'openedFile') {
     // a file was dropped onto the editor (read inside the sandbox). No FS handle,
-    // so saving uses the download fallback.
-    currentFile = { name: msg.name || 'edited.csv', text: msg.text || '', handle: null };
+    // so saving uses the download fallback. The sandbox hands over raw bytes so the
+    // encoding is guessed here, in one place.
+    const decoded = msg.buffer
+      ? decodeCsvBytes(msg.buffer)
+      : { text: msg.text || '', encoding: 'utf-8', hadBom: false };
+    currentFile = {
+      name: msg.name || 'edited.csv', text: decoded.text, handle: null,
+      encoding: decoded.encoding, hadBom: decoded.hadBom,
+    };
     markLoaded();
     sendCurrentFile();
   }
