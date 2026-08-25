@@ -4,7 +4,7 @@
 # Ships ONLY the runtime files — none of the VS Code fork baggage
 # (src/, docs/, images/, exampleCSV/, node_modules/, TS sources, source maps).
 #
-# Usage: npm run pack:chrome
+# Usage: npm run bump && npm run pack:chrome
 # Output: dist/chrome-csv-editor/  (unpacked)  and  dist/chrome-csv-editor.zip
 #
 set -euo pipefail
@@ -16,25 +16,19 @@ STAGE="$DIST/chrome-csv-editor"
 # (we cd'ed to the repo root above)
 STAGE_REL="dist/chrome-csv-editor"
 
-# Bump the manifest patch version (x.y.Z -> x.y.Z+1) so each build is a valid
-# Web Store re-upload. Skip with NO_BUMP=1 (e.g. for local test builds).
-# Only the version substring is rewritten, so the rest of manifest.json is untouched.
-if [ "${NO_BUMP:-}" != "1" ]; then
-  echo "[0/4] Bumping patch version…"
-  python3 - <<'PY'
-import re
-p = "manifest.json"
-s = open(p, encoding="utf-8").read()
-def bump(m):
-    a, b, c = m.group(1).split(".")
-    return '"version": "%s.%s.%d"' % (a, b, int(c) + 1)
-s, n = re.subn(r'"version":\s*"(\d+\.\d+\.\d+)"', bump, s, count=1)
-assert n == 1, "manifest.json version not found / not x.y.z"
-open(p, "w", encoding="utf-8").write(s)
-print("  version ->", re.search(r'"version":\s*"([^"]+)"', s).group(1))
-PY
-  echo "  NOTE: commit manifest.json, else the repo falls behind the published version"
+# The version must already be committed. It used to be bumped right here, which meant
+# uploads went out from a number that lived only in the working tree and the repo drifted
+# behind the published version until the Web Store rejected an upload. Use `npm run bump`
+# (which bumps AND commits), and set ALLOW_DIRTY_MANIFEST=1 for throwaway local builds.
+if [ "${ALLOW_DIRTY_MANIFEST:-}" != "1" ] && git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  if ! git diff --quiet HEAD -- manifest.json; then
+    echo "error: manifest.json differs from HEAD - the packaged version would not be in git." >&2
+    echo "       run 'npm run bump' to bump and commit it, or set ALLOW_DIRTY_MANIFEST=1" >&2
+    echo "       for a local build you are not going to upload." >&2
+    exit 1
+  fi
 fi
+echo "[0/4] Version: $(python3 -c "import json;print(json.load(open('manifest.json'))['version'])")"
 
 echo "[1/4] Building the editor (csvEditorHtml/out)…"
 npx tsc -p ./csvEditorHtml/tsconfig.json

@@ -861,6 +861,7 @@
 		"buildBrowser": "node ./csvEditorHtml/out/browser/build/build.js",
 		"test:ext": "node --test extension/lib/*.test.mjs csvEditorHtml/*.test.mjs",
 		"build:editor": "npx tsc -p ./csvEditorHtml/tsconfig.json",
+		"bump": "bash scripts/bump.sh",
 		"pack:chrome": "bash scripts/package.sh"
 	},
 	"dependencies": {
