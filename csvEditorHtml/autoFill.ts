@@ -260,7 +260,7 @@ function customAutoFillFunc(_data: string[], targetCount: number, isNormalDirect
 					const dateMatches = Array.from(cellText.matchAll(knownFormat.regex))
 
 					// if (dateMatches.length === 0) continue
-					if (dateMatches.length != 1) continue
+					if (dateMatches.length !== 1) continue
 
 					// format = `YYYY-MM-DD`
 					let dateMatch = dateMatches[0] // e.g. 2024.01.01
@@ -810,13 +810,13 @@ function customAutoFillFunc(_data: string[], targetCount: number, isNormalDirect
 				let diffInMonths = el.month() - prevEl.month()
 				let diffInYears = el.year() - prevEl.year()
 
-				if (deltas[0] === 0 && deltas[1] === 0 && diffInDays == 0 && diffInMonths === 0) {
+				if (deltas[0] === 0 && deltas[1] === 0 && diffInDays === 0 && diffInMonths === 0) {
 
 					if (diffInYears !== deltas[2]) {
 						allDeltasAreTheSame[2] = false
 					}
 				}
-				else if (deltas[0] === 0 && diffInDays == 0) {
+				else if (deltas[0] === 0 && diffInDays === 0) {
 
 					if (diffInYears !== deltas[2]) {
 						allDeltasAreTheSame[2] = false

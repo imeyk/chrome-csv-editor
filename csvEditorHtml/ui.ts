@@ -1963,7 +1963,7 @@ function displayData(this: any, csvParseResult: ExtendedCsvParseResult | null, c
 				nextCoords.col = getNextCol(nextCoords.col)
 
 			}
-			else if (directionRow != 0) {
+			else if (directionRow !== 0) {
 				//row is properly set after this
 				nextCoords.row = getNextRow(nextCoords.row)
 
@@ -1981,7 +1981,7 @@ function displayData(this: any, csvParseResult: ExtendedCsvParseResult | null, c
 					nextCoords.col = getNextCol(nextCoords.col)
 				}
 
-			} else if (directionCol != 0) {
+			} else if (directionCol !== 0) {
 				//col is properly set after this
 				nextCoords.col = getNextCol(nextCoords.col)
 
