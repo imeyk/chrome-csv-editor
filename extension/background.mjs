@@ -58,13 +58,37 @@ chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
   }
 }, { url: [{ schemes: ['file'] }] });
 
-// Cancel a download, delete whatever landed on disk and drop the history entry.
-// Each step is best effort: a tiny file is often already complete before we get here, and
-// `removeFile` only works once it is.
+// Cancel a download and get rid of the copy it made.
+//
+// Two things make this fiddly. A tiny file is usually already complete before we get here,
+// and `removeFile` only works once it is. And on Windows the freshly written file can still
+// be locked for a moment, so `removeFile` fails on the first try. The history entry is
+// erased only after the file is really gone, because erasing it first would leave us with
+// no way to find the copy again.
 async function discardDownload(id) {
   try { await chrome.downloads.cancel(id); } catch (err) { /* already finished */ }
-  try { await chrome.downloads.removeFile(id); } catch (err) { /* nothing on disk (yet) */ }
-  try { await chrome.downloads.erase({ id }); } catch (err) { /* already erased */ }
+
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const [item] = await chrome.downloads.search({ id });
+    if (!item) return;                       // already gone
+
+    if (item.state === 'complete') {
+      try {
+        await chrome.downloads.removeFile(id);
+        try { await chrome.downloads.erase({ id }); } catch (err) { /* already erased */ }
+        return;
+      } catch (err) {
+        // still locked (or already deleted by someone else) - try again in a moment
+      }
+    } else if (item.state === 'interrupted') {
+      // cancel() took effect, chrome removed the partial file itself
+      try { await chrome.downloads.erase({ id }); } catch (err) { /* already erased */ }
+      return;
+    }
+
+    await new Promise(resolve => setTimeout(resolve, 250 * (attempt + 1)));
+  }
+  console.warn('[bg] could not remove the downloaded copy of a local csv');
 }
 
 // A LOCAL csv that ended up as a download (the service worker was too cold for the
@@ -75,6 +99,46 @@ chrome.downloads.onCreated.addListener(async (item) => {
   await discardDownload(item.id);
   await chrome.tabs.create({ url: editorUrlForFile(originalUrlOfDownload(item)) });
 });
+
+// A download that starts BEFORE the extension's service worker exists is not delivered to
+// onCreated at all - and that is exactly the case this is about: the OS starts the browser
+// by the csv file, chrome downloads it because it cannot render it, and that can be over
+// before the extension is loaded. Traced on a cold start: webNavigation and
+// downloads.onChanged arrive, downloads.onCreated does not.
+//
+// So sweep for a local csv that just came in whenever the worker starts, not only from
+// onStartup (which does not fire for an unpacked extension being (re)installed).
+const RECENT_DOWNLOAD_WINDOW_MS = 60000;
+
+async function sweepRecentLocalCsvDownloads() {
+  let items;
+  try {
+    items = await chrome.downloads.search({ limit: 20, orderBy: ['-startTime'] });
+  } catch (err) {
+    return;
+  }
+
+  for (const item of items) {
+    if (!isLocalCsvDownload(item, isCsvUrl)) continue;
+
+    const startedAt = Date.parse(item.startTime);
+    if (!Number.isFinite(startedAt) || Date.now() - startedAt > RECENT_DOWNLOAD_WINDOW_MS) continue;
+
+    // the copy has to go regardless of who opened the editor
+    await discardDownload(item.id);
+
+    // ...but only open a tab if another handler did not already get there first
+    const editorUrl = editorUrlForFile(originalUrlOfDownload(item));
+    const openTabs = await chrome.tabs.query({ url: chrome.runtime.getURL('extension/editor.html') + '*' });
+    if (!openTabs.some(tab => tab.url === editorUrl || tab.pendingUrl === editorUrl)) {
+      await chrome.tabs.create({ url: editorUrl });
+    }
+    break;   // the OS hands over one file per launch
+  }
+}
+
+chrome.runtime.onStartup.addListener(sweepRecentLocalCsvDownloads);
+sweepRecentLocalCsvDownloads();
 
 // Open finished .csv/.tsv downloads in the editor. Dropping a CSV onto Chrome (or
 // clicking a CSV link) usually DOWNLOADS it rather than navigating, so the

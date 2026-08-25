@@ -48,6 +48,7 @@ rsync -a --exclude='*.test.mjs' extension/ "$STAGE/extension/"
 # the unused VS Code webview template (index.html) and the editor tsconfig.
 rsync -a \
   --exclude='*.ts' \
+  --exclude='*.test.mjs' \
   --exclude='*.js.map' \
   --exclude='index.html' \
   --exclude='tsconfig.json' \
@@ -69,9 +70,20 @@ rsync -a \
 rsync -a _locales/ "$STAGE/_locales/"
 
 echo "[3/4] Zipping…"
-( cd "$DIST" && zip -qr chrome-csv-editor.zip chrome-csv-editor )
+ZIP="$DIST/chrome-csv-editor.zip"
+if command -v zip >/dev/null 2>&1; then
+  ( cd "$DIST" && zip -qr chrome-csv-editor.zip chrome-csv-editor )
+elif command -v powershell.exe >/dev/null 2>&1; then
+  # git bash on windows ships no zip binary
+  powershell.exe -NoProfile -NonInteractive -Command \
+    "Compress-Archive -Path '$(cygpath -w "$STAGE")' -DestinationPath '$(cygpath -w "$ZIP")' -Force" >/dev/null
+else
+  echo "  neither zip nor powershell found — skipping the archive" >&2
+fi
 
 echo "[4/4] Done."
 echo "  unpacked: $(du -sh "$STAGE" | cut -f1)   ($(find "$STAGE" -type f | wc -l | tr -d ' ') files)"
-echo "  zip:      $(du -sh "$DIST/chrome-csv-editor.zip" | cut -f1)"
+if [ -f "$ZIP" ]; then
+  echo "  zip:      $(du -sh "$ZIP" | cut -f1)"
+fi
 echo "Load unpacked from: $STAGE"
