@@ -599,6 +599,7 @@ function displayData(this: any, csvParseResult: ExtendedCsvParseResult | null, c
 	let defaultColHeaderFuncBound = defaultColHeaderFunc.bind(this, showColumnHeaderNamesWithLettersLikeExcel, columnNamesStartIndex)
 
 	isInitialHotRender = true
+	userResizedPhysicalColumns = []
 
 	hot = new Handsontable(container, {
 		data: csvParseResult.data,
@@ -1074,8 +1075,15 @@ function displayData(this: any, csvParseResult: ExtendedCsvParseResult | null, c
 				}
 			}
 		},
-		afterColumnResize: function () {
+		afterColumnResize: function (newSize: number, column: number) {
 			// syncColWidths() //covered by afterRender
+			//remember it so growColumnsToFitHeaders() does not widen it again
+			if (hot && typeof column === 'number') {
+				const physicalIndex = hot.toPhysicalColumn(column)
+				if (userResizedPhysicalColumns.indexOf(physicalIndex) === -1) {
+					userResizedPhysicalColumns.push(physicalIndex)
+				}
+			}
 		},
 		afterPaste: function () {
 			//could create new columns
@@ -2083,6 +2091,12 @@ function displayData(this: any, csvParseResult: ExtendedCsvParseResult | null, c
 	//make sure we see something (right size)...
 	onResizeGrid()
 
+	//the headers only exist in the dom now, so this is the first point where we can check
+	//whether the column name actually fits next to the delete icon
+	call_after_DOM_updated(() => {
+		growColumnsToFitHeaders()
+	})
+
 	//because main.ts is loaded before this the first init must be manually...
 	afterHandsontableCreated(hot!)
 
@@ -2297,6 +2311,91 @@ function applyColWidths(overwriteAutoSizedColumnWidths: boolean) {
 /**
  * syncs the {@link allColWidths} with the ui/handsonable state
  */
+/**
+ * Makes sure every column is wide enough for its header.
+ *
+ * The delete icon in the header is positioned absolutely (so it stays visible for the last
+ * column instead of overflowing past the table's clipped edge), which means it takes no
+ * space in the flow. The space is reserved with css padding on the header element instead
+ * -- see `.handsontable th .colHeader` in settingsOverwrite.css -- and autoColumnSize
+ * measures that, so freshly measured columns already fit.
+ *
+ * What it cannot know about are header names that change AFTER the measurement, e.g. when
+ * the "has header" read option turns the first data row into the column names. Then the
+ * name is wider than the column and the icon leans into the next header. So compare what
+ * the header needs with what the column gives it, and widen by the difference.
+ *
+ * Only ever widens, and never touches a column the user resized by hand.
+ */
+function growColumnsToFitHeaders() {
+
+	if (!hot || isGrowingColumnsToFitHeaders) return
+
+	const manualColumnResizePlugin = hot.getPlugin('manualColumnResize')
+	let hasChanges = false
+
+	for (let visualIndex = 0; visualIndex < hot.countCols(); visualIndex++) {
+
+		const currentWidth = hot.getColWidth(visualIndex)
+		if (currentWidth < 1) continue //hidden column, see the colWidths option
+
+		if (userResizedPhysicalColumns.indexOf(hot.toPhysicalColumn(visualIndex)) !== -1) continue
+
+		//@ts-ignore
+		const th = hot.view.wt.wtTable.getColumnHeader(visualIndex) as HTMLElement | null
+		if (!th) continue //column is outside the rendered viewport
+
+		const neededWidth = _getNeededColumnHeaderWidth(th)
+		if (neededWidth === null) continue
+
+		//+1 for the column border
+		const missingWidth = Math.ceil(neededWidth) + 1 - th.clientWidth
+		if (missingWidth <= 0) continue
+
+		let targetWidth = currentWidth + missingWidth
+		//respect an explicitly configured maximum
+		if (initialColumnWidth > 0) targetWidth = Math.min(targetWidth, initialColumnWidth)
+		if (targetWidth <= currentWidth) continue
+
+		manualColumnResizePlugin.setManualSize(visualIndex, targetWidth)
+		allColWidths[visualIndex] = targetWidth
+		hasChanges = true
+	}
+
+	if (!hasChanges) return
+
+	//we can be called from afterRender, so leave the current render cycle first
+	isGrowingColumnsToFitHeaders = true
+	setTimeout(() => {
+		isGrowingColumnsToFitHeaders = false
+		if (hot) hot.render()
+	}, 0)
+}
+let isGrowingColumnsToFitHeaders = false
+
+/**
+ * width the header of this th needs: the name itself plus the space reserved for the
+ * delete icon (css padding), or null when there is nothing to measure
+ */
+function _getNeededColumnHeaderWidth(th: HTMLElement): number | null {
+
+	const headerEl = th.querySelector(`.colHeader`) as HTMLElement | null
+	if (!headerEl) return null
+
+	let textWidth = 0
+	for (let i = 0; i < headerEl.childNodes.length; i++) {
+		const node = headerEl.childNodes[i]
+		if (node.nodeType !== Node.TEXT_NODE) continue
+		const range = document.createRange()
+		range.selectNodeContents(node)
+		textWidth += range.getBoundingClientRect().width
+	}
+	if (textWidth === 0) return null
+
+	const reservedForIcon = parseFloat(getComputedStyle(headerEl).paddingRight) || 0
+	return textWidth + reservedForIcon
+}
+
 function syncColWidths() {
 	allColWidths = _getColWidths()
 	// console.log('col widths synced', allColWidths);
@@ -3022,6 +3121,9 @@ function afterRenderForced(isForced: boolean) {
 	recordedHookActions = []
 
 	if (!isForced || isInitialHotRender) return
+	//columns render lazily and header names can change (e.g. the has header option), so
+	//check the headers again here
+	growColumnsToFitHeaders()
 	//e.g. when we edit a cell and the cell must adjust the width because of the content
 	//there is no other hook?
 	//this is also fired on various other event (e.g. col resize...) but better sync more than miss an event
