@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8" />
+	<title>Edit CSV unit tests</title>
+
+	<!--
+		The editor is not a module: util.ts / io.ts / autoFill.ts declare their helpers as
+		top level `function`/`var`, and the units under test reach for them as globals. So they
+		have to be loaded as CLASSIC scripts - importing them from a setup file would keep
+		everything module scoped and every test would fail on an undefined identifier.
+
+		Vitest injects its own tester scripts into this template automatically (see
+		`transformIndexHtml` in @vitest/browser), and module scripts are deferred, so
+		everything below is in place before the first test file runs.
+
+		This replaces the `browser.testerScripts` option, which vitest 4 removed.
+	-->
+	<script src="/node_modules/dayjs/dayjs.min.js"></script>
+	<script src="/node_modules/dayjs/plugin/customParseFormat.js"></script>
+	<script src="/thirdParty/big.js/big.min.js"></script>
+	<script src="/thirdParty/toFormat/toFormat.min.js"></script>
+	<!-- our regression uses big.js -->
+	<script src="/thirdParty/regression/regression.min.js"></script>
+	<script src="/thirdParty/papaparse/papaparse.umd.js"></script>
+	<script src="/csvEditorHtml/detect-delimiter.js"></script>
+	<script src="/csvEditorHtml/util.ts"></script>
+	<script src="/csvEditorHtml/io.ts"></script>
+	<script src="/csvEditorHtml/autoFill.ts"></script>
+	<script>
+		window.numbersStyleEnRadio = { checked: true }
+		//add toFormat to big numbers
+		toFormat(Big)
+		//for custom formatted dates
+		dayjs.extend(dayjs_plugin_customParseFormat)
+	</script>
+	<script src="/csvEditorHtml/test/init.ts"></script>
+</head>
+
+<body></body>
+
+</html>
