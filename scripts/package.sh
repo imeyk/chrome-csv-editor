@@ -33,6 +33,7 @@ assert n == 1, "manifest.json version not found / not x.y.z"
 open(p, "w", encoding="utf-8").write(s)
 print("  version ->", re.search(r'"version":\s*"([^"]+)"', s).group(1))
 PY
+  echo "  NOTE: commit manifest.json, else the repo falls behind the published version"
 fi
 
 echo "[1/4] Building the editor (csvEditorHtml/out)…"
