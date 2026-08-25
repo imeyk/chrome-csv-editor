@@ -12,6 +12,9 @@ cd "$(dirname "$0")/.."
 ROOT="$(pwd)"
 DIST="$ROOT/dist"
 STAGE="$DIST/chrome-csv-editor"
+# rsync reads "C:/..." as user "C" on host "/...", so hand it relative paths instead
+# (we cd'ed to the repo root above)
+STAGE_REL="dist/chrome-csv-editor"
 
 # Bump the manifest patch version (x.y.Z -> x.y.Z+1) so each build is a valid
 # Web Store re-upload. Skip with NO_BUMP=1 (e.g. for local test builds).
@@ -42,7 +45,7 @@ mkdir -p "$STAGE"
 cp manifest.json "$STAGE/"
 
 # Host page + logic (drop unit tests).
-rsync -a --exclude='*.test.mjs' extension/ "$STAGE/extension/"
+rsync -a --exclude='*.test.mjs' extension/ "$STAGE_REL/extension/"
 
 # Editor: ship compiled JS + css + html only. Drop TS sources, source maps,
 # the unused VS Code webview template (index.html) and the editor tsconfig.
@@ -54,7 +57,7 @@ rsync -a \
   --exclude='tsconfig.json' \
   --exclude='test/' \
   --exclude='browser/' \
-  csvEditorHtml/ "$STAGE/csvEditorHtml/"
+  csvEditorHtml/ "$STAGE_REL/csvEditorHtml/"
 
 # Vendored libraries: ship the minified builds + licenses only.
 rsync -a \
@@ -64,10 +67,10 @@ rsync -a \
   --exclude='info.md' \
   --exclude='handsontable.js' \
   --exclude='handsontable.css' \
-  thirdParty/ "$STAGE/thirdParty/"
+  thirdParty/ "$STAGE_REL/thirdParty/"
 
 # Translations.
-rsync -a _locales/ "$STAGE/_locales/"
+rsync -a _locales/ "$STAGE_REL/_locales/"
 
 echo "[3/4] Zipping…"
 ZIP="$DIST/chrome-csv-editor.zip"
