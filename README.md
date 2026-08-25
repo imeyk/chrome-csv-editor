@@ -46,6 +46,26 @@ npm run testFe
 
 ---
 
+## Packaging for the Chrome Web Store
+
+```bash
+npm run bump          # bumps manifest.json AND commits it
+npm run pack:chrome   # dist/chrome-csv-editor/ (unpacked) + dist/chrome-csv-editor.zip
+```
+
+Upload `dist/chrome-csv-editor.zip`, then **push the bump commit**.
+
+> The Web Store refuses an upload whose version is not strictly greater than the
+> published one. The bump therefore has to end up in git: it used to happen at build
+> time, so uploads went out from versions that lived only in a working tree and the
+> repo drifted behind what was live. `pack:chrome` now refuses to package a
+> `manifest.json` that differs from `HEAD` — use `ALLOW_DIRTY_MANIFEST=1` for a local
+> build you are not going to upload.
+
+`npm run bump -- 0.2.0` sets an explicit version, e.g. to get ahead of a published one.
+
+---
+
 ## Load Unpacked in Chrome
 
 1. Open `chrome://extensions`.
