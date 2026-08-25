@@ -215,12 +215,22 @@ body.extension-settings-font-size .textarea {
 	transform: translateY(-50%);
 	margin-right: 0;
 }
-/* keep the pinned delete icon legible where it overlaps narrow header text */
 .handsontable th .remove-col {
 	background: inherit;
 	padding: 2px 3px;
 	border-radius: 3px;
 	z-index: 2;
+}
+/* Pinning the icon takes it out of the flow, so nothing reserved its space: the column
+   name ran underneath it and autoColumnSize could not know the icon was there at all.
+   Reserving the space on the header text itself fixes both - the name cannot reach the
+   icon, and the reserved width IS part of what autoColumnSize measures, so the column is
+   made wide enough for name + icon. */
+.handsontable th {
+	--remove-col-width: 26px;
+}
+.handsontable th .colHeader {
+	padding-right: var(--remove-col-width);
 }
 
 /* clickable toolbar / menu affordances should use the pointer cursor */

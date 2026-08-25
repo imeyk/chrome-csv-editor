@@ -317,6 +317,14 @@ let allColWidths: Array<number> = []
 //afterRender is called directly after we render the table but we might want to apply old col widths here
 let isInitialHotRender = true
 
+/**
+ * physical indices of columns the user resized by hand
+ *
+ * {@link growColumnsToFitHeaders} leaves those alone, so a column dragged narrower than its
+ * header stays narrow
+ */
+let userResizedPhysicalColumns: number[] = []
+
 
 
 
