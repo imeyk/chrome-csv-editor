@@ -51,7 +51,9 @@ async function loadPendingPayload() {
     } catch (err) {
       // Most likely cause: "Allow access to file URLs" is disabled, or the file was removed.
       console.warn('[host] failed to load file:// URL', err);
-      alert(chrome.i18n.getMessage('fileOpenError'));
+      // A banner beats alert() here: it stays on screen, it carries the button that opens
+      // the setting, and it does not block the page behind a modal the user must dismiss.
+      showFileAccessBanner(chrome.i18n.getMessage('fileOpenError'));
     }
   }
 }
@@ -198,12 +200,36 @@ window.addEventListener('message', (e) => {
   }
 });
 
+// Banner with a button that opens this extension's settings page (where "Allow access to
+// file URLs" lives). Used both for the one-time hint and for a failed local file read.
+let fileAccessBannerWired = false;
+function showFileAccessBanner(text) {
+  const banner = document.getElementById('file-access-banner');
+  if (!banner) return;
+  banner.querySelector('.fab-text').textContent = text;
+
+  if (!fileAccessBannerWired) {
+    fileAccessBannerWired = true;
+    const settingsBtn = document.getElementById('fab-open-settings');
+    const closeBtn = document.getElementById('fab-close');
+    settingsBtn.textContent = chrome.i18n.getMessage('fileAccessHintButton');
+    closeBtn.setAttribute('aria-label', chrome.i18n.getMessage('fileAccessHintDismiss'));
+    settingsBtn.addEventListener('click', () => {
+      chrome.tabs.create({ url: 'chrome://extensions/?id=' + chrome.runtime.id });
+    });
+    closeBtn.addEventListener('click', async () => {
+      banner.hidden = true;
+      await chrome.storage.local.set({ fileAccessHintDismissed: true });
+    });
+  }
+  banner.hidden = false;
+}
+
 // One-time hint suggesting the user enable "Allow access to file URLs". Shown only
 // when file access is off AND the user hasn't dismissed it before (persisted in
 // chrome.storage.local); dismissing hides it for good.
 (async function fileAccessHint() {
-  const banner = document.getElementById('file-access-banner');
-  if (!banner) return;
+  if (!document.getElementById('file-access-banner')) return;
   const stored = await chrome.storage.local.get('fileAccessHintDismissed');
   if (stored.fileAccessHintDismissed) return;
   const allowed = await new Promise((res) => {
@@ -211,17 +237,5 @@ window.addEventListener('message', (e) => {
   });
   if (allowed) return; // already enabled — nothing to suggest
 
-  banner.querySelector('.fab-text').textContent = chrome.i18n.getMessage('fileAccessHintText');
-  const settingsBtn = document.getElementById('fab-open-settings');
-  const closeBtn = document.getElementById('fab-close');
-  settingsBtn.textContent = chrome.i18n.getMessage('fileAccessHintButton');
-  closeBtn.setAttribute('aria-label', chrome.i18n.getMessage('fileAccessHintDismiss'));
-  settingsBtn.addEventListener('click', () => {
-    chrome.tabs.create({ url: 'chrome://extensions/?id=' + chrome.runtime.id });
-  });
-  closeBtn.addEventListener('click', async () => {
-    banner.hidden = true;
-    await chrome.storage.local.set({ fileAccessHintDismissed: true });
-  });
-  banner.hidden = false;
+  showFileAccessBanner(chrome.i18n.getMessage('fileAccessHintText'));
 })();

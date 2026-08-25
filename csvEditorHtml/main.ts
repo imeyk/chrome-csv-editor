@@ -409,6 +409,15 @@ let previousSelectedCell: HotCellPos | null = null
 let previousViewportOffsets: HotViewportOffsetInPx | null = null
 let previousManualRowHeights: number[] | null = null
 
+/**
+ * the row height (in px) the browser actually produces for a normal (not hidden,
+ * not manually resized) row -- null until it was measured once
+ *
+ * we must declare exactly this height via the `rowHeights` option, see
+ * {@link syncMeasuredRowHeight} for why
+ */
+let measuredRowHeightInPx: number | null = null
+
 //set defaults when we are in browser
 setCsvReadOptionsInitial(defaultCsvReadOptions)
 setCsvWriteOptionsInitial(defaultCsvWriteOptions)
