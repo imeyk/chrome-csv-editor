@@ -36,8 +36,12 @@ in your environment, compile only the editor with the command above.
 ### Verify the build (optional)
 
 ```bash
-# Runs the host/lib unit suite (chunking, CSV-URL detection, save routing).
-node --test extension/lib/*.test.mjs
+# Node unit suite: chunking, CSV-URL detection, save routing, encoding
+# detection, local-download handling, delimiter detection.
+npm run test:ext
+
+# Editor unit suite, in a real headless chromium (auto-fill, header guessing).
+npm run testFe
 ```
 
 ---

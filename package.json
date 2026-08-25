@@ -875,10 +875,11 @@
 		"@types/jsdom": "11.0.4",
 		"@types/mocha": "2.2.48",
 		"@types/mousetrap": "1.6.3",
-		"@types/node": "18.11.9",
+		"@types/node": "^22.12.0",
 		"@types/readline-sync": "1.4.3",
 		"@types/vscode": "1.70.0",
 		"@vitest/browser": "4.1.8",
+		"@vitest/browser-playwright": "^4.1.8",
 		"@vscode/test-electron": "2.4.1",
 		"bulma-toast": "2.0.3",
 		"chardet": "1.2.1",
@@ -892,6 +893,7 @@
 		"toaster-js": "2.2.3",
 		"tslint": "5.8.0",
 		"typescript": "5.0.4",
+		"vite": "^8.0.16",
 		"vitest": "4.1.8"
 	}
 }

@@ -1,4 +1,5 @@
 import { defineConfig } from 'vitest/config'
+import { playwright } from '@vitest/browser-playwright'
 
 export default defineConfig({
 
@@ -7,65 +8,17 @@ export default defineConfig({
       enabled: true,
       headless: true,
       screenshotFailures: false,
-      name: 'chromium',
-      provider: 'playwright',
-      testerScripts: [
-        {
-          src: './node_modules/dayjs/dayjs.min.js',
-          type: 'text/javascript',
-        },
-        {
-          src: './node_modules/dayjs/plugin/customParseFormat.js',
-          type: 'text/javascript',
-        },
-        {
-          src: './thirdParty/big.js/big.min.js',
-          type: 'text/javascript',
-        },
-        {
-          src: './thirdParty/toFormat/toFormat.min.js',
-          type: 'text/javascript',
-        },
-        {
-          src: './thirdParty/regression/regression.min.js', //our regression uses big.js
-          type: 'text/javascript',
-        },
-        {
-          src: './thirdParty/papaparse/papaparse.umd.js',
-          type: 'text/javascript',
-        },
-        {
-          src: './csvEditorHtml/util.ts',
-          type: 'text/javascript',
-        },
-        {
-          src: './csvEditorHtml/io.ts',
-          type: 'text/javascript',
-        },
-        {
-          src: './csvEditorHtml/autoFill.ts',
-          type: 'text/javascript',
-        },
-        //could also be moved to init...
-        {
-          content: `
-          window.numbersStyleEnRadio = {
-            checked: true
-          }
-          //add toFormat to big numbers
-          toFormat(Big)
-          //for custom formatted dates
-          dayjs.extend(dayjs_plugin_customParseFormat);
-          
-          `,
-          type: 'text/javascript',
-        },
-        {
-          src: './csvEditorHtml/test/init.ts',
-          type: 'text/javascript',
-        },
-
-      ],
+      // vitest 4 takes a provider factory instead of a name, and a list of instances
+      // instead of `name: 'chromium'`
+      provider: playwright(),
+      instances: [{ browser: 'chromium' }],
+      // bind explicitly to 127.0.0.1: on windows the browser resolves "localhost" to ::1
+      // while the server listens on IPv4, and every page.goto is refused
+      api: { host: '127.0.0.1' },
+      // vitest 4 removed `browser.testerScripts`. The globals the editor's units expect
+      // are loaded by this template instead - see the comment in it for why they have to
+      // stay classic scripts.
+      testerHtmlPath: './csvEditorHtml/test/tester.html',
     },
     include: ['csvEditorHtml/test/**/*.test.ts'],
   },
