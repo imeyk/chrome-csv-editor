@@ -15,9 +15,23 @@ function parseCsv(content: string, csvReadOptions: CsvReadOptions): ExtendedCsvP
 
 	hasFinalNewLine = content.endsWith('\n')
 
+	//papaparse's own guess compares average field counts, which picks ',' for a ';'
+	//separated file whose text columns hold comma separated lists (see detect-delimiter.js)
+	//so detect it ourselves first, and fall back to papaparse's guess when we are unsure
+	let effectiveDelimiter = csvReadOptions.delimiter
+	if (effectiveDelimiter === '') {
+		const detected = detectCsvDelimiter(content, {
+			candidates: csvReadOptions.delimitersToGuess,
+			quoteChar: csvReadOptions.quoteChar,
+			comments: csvReadOptions.comments,
+		})
+		if (detected !== null) effectiveDelimiter = detected
+	}
+
 	//comments are parses as normal text, only one cell is added
 	const parseResult = papaCsv.parse(content, {
 		...csvReadOptions,
+		delimiter: effectiveDelimiter,
 		//note this overwrites the comments string from the read config!
 		comments: null, //false gives use all lines we later check each line if it's a comment to merge the cells in that row
 		//left trimmed lines are comments and if !== null we want to include comments as one celled row (in the ui)

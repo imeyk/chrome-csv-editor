@@ -57,6 +57,33 @@ function toggleOptionsBar(shouldCollapse?: boolean) {
 
 /* --- read options --- */
 
+/**
+ * Re-reads the file with the current read options and re-renders the table.
+ *
+ * Changing a read option used to only update {@link defaultCsvReadOptions}: the open table
+ * kept the delimiter it was parsed with until "Reset data and apply read options" was
+ * clicked, which looks exactly like the option being ignored.
+ *
+ * Re-reading throws away unsaved edits, so when there are any we open the existing confirm
+ * dialog instead of applying silently.
+ */
+function applyReadOptionsToCurrentTable() {
+
+	//nothing rendered yet (no file received) -> the options will be used by the first parse
+	if (!hot) return
+
+	if (getHasAnyChangesUi()) {
+		toggleAskReadAgainModal(true)
+		return
+	}
+
+	storeHotSelectedCellAndScrollPosition()
+	startRenderData()
+}
+
+//the text inputs fire on every keystroke, so wait until the user stopped typing
+const debouncedApplyReadOptions = debounce(applyReadOptionsToCurrentTable, 400)
+
 function getHasHeaderRow() {
 	return headerRowWithIndex !== null
 }
@@ -286,11 +313,13 @@ function tryApplyHasHeader() {
 function setDelimiterString() {
 	const el = _getById('delimiter-string') as HTMLInputElement
 	defaultCsvReadOptions.delimiter = el.value
+	debouncedApplyReadOptions()
 }
 
 function setCommentString() {
 	const el = _getById('comment-string') as HTMLInputElement
 	defaultCsvReadOptions.comments = el.value === '' ? false : el.value
+	debouncedApplyReadOptions()
 }
 
 function setQuoteCharString() {
@@ -299,6 +328,7 @@ function setQuoteCharString() {
 	ensuredSingleCharacterString(el)
 
 	defaultCsvReadOptions.quoteChar = el.value
+	debouncedApplyReadOptions()
 }
 
 function setEscapeCharString() {
@@ -307,6 +337,7 @@ function setEscapeCharString() {
 	ensuredSingleCharacterString(el)
 
 	defaultCsvReadOptions.escapeChar = el.value
+	debouncedApplyReadOptions()
 }
 
 /**
@@ -328,6 +359,7 @@ function setReadDelimiter(delimiter: string) {
 	const el = _getById('delimiter-string') as HTMLInputElement
 	el.value = delimiter
 	defaultCsvReadOptions.delimiter = delimiter
+	debouncedApplyReadOptions()
 }
 
 /* --- write options --- */
