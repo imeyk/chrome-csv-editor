@@ -1,5 +1,7 @@
 # Working in this repo
 
+> Накопленные заметки по проекту (решения, инциденты, договорённости) — `.claude/memory/`, индекс — `.claude/memory/MEMORY.md`. Новые факты о проекте писать туда же, а не в память сессии.
+
 ## What this is
 
 A Chrome MV3 extension ("Edit CSV") forked from the VS Code extension `vscode-csv-edit`.

@@ -1,0 +1,1 @@
+- [Web Store version bump](web-store-version-bump.md) — release rules live in the repo's CLAUDE.md; `npm run bump` bumps and commits, and pack:chrome refuses an uncommitted version
