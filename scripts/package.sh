@@ -69,12 +69,18 @@ rsync -a _locales/ "$STAGE_REL/_locales/"
 
 echo "[3/4] Zipping…"
 ZIP="$DIST/chrome-csv-editor.zip"
+# The CONTENTS of the stage go in, not the stage folder itself: the Web Store looks for
+# manifest.json in the archive root and answers a wrapped folder with "manifest file is
+# missing or unreadable".
+# Delete first: `zip` ADDS to an existing archive, so a rebuild would otherwise keep
+# entries of files that no longer exist (and, right after this change, the old wrapped ones).
+rm -f "$ZIP"
 if command -v zip >/dev/null 2>&1; then
-  ( cd "$DIST" && zip -qr chrome-csv-editor.zip chrome-csv-editor )
+  ( cd "$STAGE" && zip -qr "$ZIP" . )
 elif command -v powershell.exe >/dev/null 2>&1; then
   # git bash on windows ships no zip binary
   powershell.exe -NoProfile -NonInteractive -Command \
-    "Compress-Archive -Path '$(cygpath -w "$STAGE")' -DestinationPath '$(cygpath -w "$ZIP")' -Force" >/dev/null
+    "Compress-Archive -Path '$(cygpath -w "$STAGE")\\*' -DestinationPath '$(cygpath -w "$ZIP")' -Force" >/dev/null
 else
   echo "  neither zip nor powershell found — skipping the archive" >&2
 fi
