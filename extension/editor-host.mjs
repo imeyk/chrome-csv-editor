@@ -1,5 +1,5 @@
 import { buildCsvUpdateMessages } from './lib/chunk.mjs';
-import { resolveSaveTarget, deriveDownloadName } from './lib/save.mjs';
+import { resolveSaveTarget, deriveDownloadName, deriveFilteredDownloadName } from './lib/save.mjs';
 import { decodeCsvBytes, encodeCsvText } from './lib/decode-text.mjs';
 
 const SLICE_SIZE = 1024 * 1024; // 1 MB, matches upstream
@@ -172,6 +172,13 @@ async function saveCsv(text) {
   downloadBytes(currentFile.name, bytes);
 }
 
+// "Save filtered CSV": a subset of the rows is a NEW file, so this never goes through the
+// file handle - it would overwrite the source with the filtered rows. Always a download.
+function saveFilteredCsv(text) {
+  const bytes = encodeCsvText(text, currentFile);
+  downloadBytes(deriveFilteredDownloadName(currentFile.name), bytes);
+}
+
 window.addEventListener('message', (e) => {
   if (e.source !== frame.contentWindow) return;
   const msg = e.data || {};
@@ -180,6 +187,8 @@ window.addEventListener('message', (e) => {
     sendCurrentFile();
   } else if (msg.command === 'apply') {
     saveCsv(msg.csvContent);
+  } else if (msg.command === 'applyFiltered') {
+    saveFilteredCsv(msg.csvContent);
   } else if (msg.command === 'openFilePicker') {
     // relayed from the editor header's "Open CSV" button (host-bridge.js);
     // the child frame's click propagates user activation to this frame.

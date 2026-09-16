@@ -526,6 +526,12 @@ function createNewEditorInstance(context: vscode.ExtensionContext, activeTextEdi
 				break
 			}
 
+			case "applyFiltered": {
+				//"Save filtered CSV" only exists in the chrome editor page (csvEditorHtml/sandbox.html),
+				//which is why this vs code webview never sends it. Listed so the switch stays exhaustive.
+				break
+			}
+
 			case "copyToClipboard": {
 				vscode.env.clipboard.writeText(message.text)
 				break

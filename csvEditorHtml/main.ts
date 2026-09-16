@@ -28,6 +28,14 @@ declare function detectCsvDelimiter(
 		maxRecords?: number,
 	}
 ): string | null
+//see csvEditorHtml/row-filter.js (loaded as a classic script before out/main.js)
+declare var csvRowFilter: {
+	DEFAULT_UNIQUE_VALUES_LIMIT: number
+	isColumnFilterEmpty: (filter: ColumnFilter | null | undefined) => boolean
+	cellMatchesColumnFilter: (value: any, filter: ColumnFilter) => boolean
+	collectColumnValues: (columnValues: any[], limit?: number) => { values: string[], truncated: boolean }
+	countActiveFilters: (filters: { [colIndex: number]: ColumnFilter } | null) => number
+}
 declare var initialContent: string
 declare var initialConfig: EditCsvConfig | undefined
 // declare var regression: RegressionLib
@@ -93,8 +101,24 @@ let handsontableOverlayScrollLeft: number = 0
 let _onTableScrollThrottled: ((this: HTMLDivElement, e: Event) => void) | null = null
 
 //IF THESE are changed, also change firstAndLastVisibleRows, firstAndLastVisibleColumns for faster lookup
+//hiddenPhysicalRowIndicesSorted is DERIVED: it is the union of the two arrays below, written
+//only by _updateHiddenPhysicalRowIndices(). Change one of the sources and call that function.
 let hiddenPhysicalRowIndicesSorted: number[] = []
+//physical row index -> true, same content as hiddenPhysicalRowIndicesSorted but as a lookup:
+//rowHeights() is called for every row on every render, and filtering can hide a LOT of rows
+let hiddenPhysicalRowIndicesLookup: { [physicalRowIndex: number]: boolean } = {}
+//rows hidden because comments are hidden, see showOrHideAllComments
+let commentHiddenPhysicalRowIndices: number[] = []
+//rows hidden because they do not match the column filters, see applyRowFilters
+let filterHiddenPhysicalRowIndices: number[] = []
 let hiddenPhysicalColumnIndicesSorted: number[] = []
+
+//the active row filters, by PHYSICAL column index so that a filter follows its column when
+//columns are moved. Never persisted: a new file or a re-parse starts without filters.
+let columnFilters: { [physicalColIndex: number]: ColumnFilter } = {}
+//the column whose filter panel is currently open (physical index), null if none is open
+let openColumnFilterPanelPhysicalColIndex: number | null = null
+let columnFilterPanelEl: HTMLDivElement | null = null
 
 //visual indices
 let firstAndLastVisibleRows: { first: number, last: number } | null = null
@@ -405,6 +429,11 @@ const isReadonlyModeToggleSpan = _getById(`is-readonly-mode-toggle`) as HTMLSpan
 
 const toolMenuWrapper = _getById(`tools-menu-wrapper`) as HTMLDivElement
 const toolsMenuBtnIcon = _getById(`tools-menu-btn-icon`) as HTMLButtonElement
+
+//the row filter actions only exist in the chrome editor page (csvEditorHtml/sandbox.html),
+//the vs code webview page (csvEditorHtml/index.html) does not have them -> null is ok
+const clearAllFiltersMenuItem = document.getElementById(`clear-all-filters-menu-item`)
+const saveFilteredCsvMenuItem = document.getElementById(`save-filtered-csv-menu-item`)
 
 //--- find widget controls
 

@@ -1002,6 +1002,18 @@ function checkIfHasHeaderReadOptionIsAvailable(isInitialRender: boolean): boolea
 }
 
 //from https://stackoverflow.com/questions/27078285/simple-throttle-in-js ... from underscore
+/**
+ * translates an english ui string.
+ * csvEditorHtml/i18n-editor.js translates the static markup by walking its text nodes, which
+ * cannot reach ui that is built at runtime (the column filter panel) - that asks for its
+ * translations here. Untranslated languages and the vs code build fall back to english.
+ * @param englishText the english source string, it is the translation key
+ */
+function _t(englishText: string): string {
+	const translate = (window as any).__editorTranslate__
+	return typeof translate === 'function' ? translate(englishText) : englishText
+}
+
 function throttle(func: Function, wait: number) {
 	var context: any, args: any, result: any;
 	var timeout: any = null;
@@ -1332,7 +1344,7 @@ function afterHandsontableCreated(hot: Handsontable) {
 	hot.addHook('afterSelection', afterSelectionHandler as any)
 
 	const afterRowOrColsCountChangeHandler = () => {
-		statRowsCount.innerText = `${hot.countRows()}`
+		_updateRowCountIndicator()
 		statColsCount.innerText = `${hot.countCols()}`
 	}
 
@@ -1346,7 +1358,7 @@ function afterHandsontableCreated(hot: Handsontable) {
 	statSelectedNotEmptyCells.innerText = `${0}`
 	statSumOfNumbers.innerText = `${0}`
 	statSelectedCellsCount.innerText = `${0}`
-	statRowsCount.innerText = `${hot.countRows()}`
+	_updateRowCountIndicator()
 	statColsCount.innerText = `${hot.countCols()}`
 }
 
@@ -2042,6 +2054,24 @@ function getFirstAndLastVisibleColumns(): { first: number, last: number } {
 	}
 
 	return { first: firstVisibleCol, last: lastVisibleCol }
+}
+
+/**
+ * the number of rows displayed after filtering.
+ * Rows hidden because comments are hidden are NOT subtracted - the indicator never counted
+ * those either, and changing that is not part of the filtering feature.
+ */
+function getVisibleRowCount(): number {
+	if (!hot) return 0
+	return Math.max(0, hot.countRows() - filterHiddenPhysicalRowIndices.length)
+}
+
+/**
+ * writes the current row count into the side panel indicator
+ */
+function _updateRowCountIndicator() {
+	if (!hot) return
+	statRowsCount.innerText = `${getVisibleRowCount()}`
 }
 
 function getFirstAndLastVisibleRows(): { first: number, last: number } {
