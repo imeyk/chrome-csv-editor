@@ -203,8 +203,10 @@ async function saveCsv(text) {
 
 // "Save filtered CSV": a subset of the rows is a NEW file, so this never goes through the
 // file handle - it would overwrite the source with the filtered rows. Always a download.
+// Encoded exactly like saveCsv(), so the write Encoding option applies here too.
 function saveFilteredCsv(text) {
-  const bytes = encodeCsvText(text, currentFile);
+  const encoding = resolveWriteEncoding(writeEncodingChoice, currentFile.encoding);
+  const bytes = encodeCsvText(text, { encoding, hadBom: currentFile.hadBom });
   downloadBytes(deriveFilteredDownloadName(currentFile.name), bytes);
 }
 
