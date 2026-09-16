@@ -1,0 +1,188 @@
+/*
+ * Chrome extension only — the form controls of the options bar (issue #17).
+ *
+ * The editor markup comes from the VS Code fork, where `src/getHtml.ts` injects
+ * @vscode/webview-ui-toolkit and the `<vscode-*>` tags become real custom elements.
+ * The extension's sandbox page does not load that toolkit, so those tags stayed inert:
+ * a `<vscode-checkbox>` rendered as its bare label with no box to click, and every
+ * `--input-background` / `--corner-radius` style in main.css resolved to nothing.
+ *
+ * So the interactive controls are plain html (`input`, `select`, `textarea`) — the same
+ * move upstream already made for `<vscode-text-field>` — and this file supplies the
+ * design tokens they, and the remaining presentational `<vscode-button>`s, style from.
+ */
+
+/* --- toolkit design tokens (sizes are unitless: main.css does calc(x * 1px)) --- */
+
+:root {
+	--corner-radius: 2;
+	--design-unit: 4;
+	--border-width: 1;
+	--input-height: 26;
+	--type-ramp-base-font-size: 14px;
+}
+
+/* `color-scheme` is what makes the native widgets themselves (the checkbox tick, the
+   select popup, scrollbars) follow the theme — without it they stay white-on-white. */
+body.vscode-dark {
+	color-scheme: dark;
+
+	--input-background: #3c3c3c;
+	--input-foreground: #cccccc;
+	--dropdown-background: #3c3c3c;
+	/* lighter than VS Code's own #3c3c3c: on a #1e1e1e page an invisible border is
+	   exactly the "не различимы в тёмной теме" complaint from the issue */
+	--dropdown-border: #5a5a5a;
+	--checkbox-background: #3c3c3c;
+	--checkbox-border: #6b6b6b;
+	--focus-border: #007fd4;
+	--accent-color: #0e639c;
+
+	--button-primary-background: #0e639c;
+	--button-primary-foreground: #ffffff;
+	--button-primary-hover-background: #1177bb;
+	--button-secondary-background: #3a3d41;
+	--button-secondary-foreground: #cccccc;
+	--button-secondary-hover-background: #45494e;
+}
+
+/* light.css already carries the input/dropdown/checkbox palette — only add what it lacks */
+body.vscode-light {
+	color-scheme: light;
+
+	--accent-color: #d3af86;
+	--button-primary-background: #5f6a79;
+	--button-primary-foreground: #ffffff;
+	--button-primary-hover-background: #4c5561;
+	--button-secondary-hover-background: #4c5561;
+}
+
+/* --- checkboxes and radios (Has header / Write header / Quote all fields) --- */
+
+input.ext-checkbox {
+	width: 16px;
+	height: 16px;
+	margin: 0 0.4rem 0 0;
+	vertical-align: middle;
+	accent-color: var(--accent-color);
+	cursor: pointer;
+}
+
+/* main.css sets `.field > label { display: block }` for the stacked text inputs; a
+   checkbox label has to stay on the same line as its box */
+.field > label.ext-checkbox-label,
+label.ext-checkbox-label {
+	display: inline;
+	vertical-align: middle;
+	cursor: pointer;
+	user-select: none;
+}
+
+input.ext-checkbox:focus-visible {
+	outline: 1px solid var(--focus-border);
+	outline-offset: 1px;
+}
+
+/* "has header will be applied automatically once the table has >= 2 rows" — the same
+   hint colour the bulma switch used to get (main.css .toggle-auto-future) */
+input.ext-checkbox.toggle-auto-future {
+	accent-color: #dcd164;
+}
+
+.ext-radio-group {
+	display: flex;
+	flex-direction: column;
+}
+
+.ext-radio {
+	display: flex;
+	align-items: center;
+	margin: 2px 0;
+}
+
+/* --- dropdowns (read/write Encoding, EOL) --- */
+
+.options-content .select select {
+	height: calc(var(--input-height) * 1px);
+	font-size: 14px;
+	color: var(--input-foreground);
+	background: var(--dropdown-background);
+	border: calc(var(--border-width) * 1px) solid var(--dropdown-border);
+	border-radius: calc(var(--corner-radius) * 1px);
+	padding: 0 calc(var(--design-unit) * 2px + 1px);
+	max-width: 100%;
+	cursor: pointer;
+}
+
+.options-content .select select:focus {
+	outline: none;
+	border-color: var(--focus-border);
+}
+
+/* --- csv preview --- */
+
+textarea.preview-csv-textarea {
+	width: 100%;
+	color: var(--input-foreground);
+	background: var(--input-background);
+	border: calc(var(--border-width) * 1px) solid var(--dropdown-border);
+	border-radius: calc(var(--corner-radius) * 1px);
+	padding: calc(var(--design-unit) * 1px);
+	font-family: var(--vscode-editor-font-family, monospace);
+	font-size: 14px;
+}
+
+textarea.preview-csv-textarea:focus {
+	outline: none;
+	border-color: var(--focus-border);
+}
+
+/* --- buttons ---
+   `vscode-button` stays a plain unknown element (it is only a click target plus an
+   icon), it just has to LOOK like the button it is instead of like bare text. */
+
+vscode-button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	box-sizing: border-box;
+	padding: calc(var(--design-unit) * 1px) 11px;
+	border: 1px solid transparent;
+	border-radius: calc(var(--corner-radius) * 1px);
+	background: var(--button-primary-background);
+	color: var(--button-primary-foreground);
+	cursor: pointer;
+	user-select: none;
+	white-space: nowrap;
+}
+
+vscode-button:hover {
+	background: var(--button-primary-hover-background);
+}
+
+vscode-button[appearance="secondary"] {
+	background: var(--button-secondary-background);
+	color: var(--button-secondary-foreground);
+}
+
+vscode-button[appearance="secondary"]:hover {
+	background: var(--button-secondary-hover-background);
+}
+
+/* icon buttons carry no surface of their own until hovered */
+vscode-button[appearance="icon"] {
+	padding: 3px;
+	border-radius: 5px;
+	background: var(--button-icon-background, transparent);
+	color: inherit;
+}
+
+vscode-button[appearance="icon"]:hover {
+	background: var(--button-icon-hover-background);
+}
+
+/* the tooltip that sits in the button's `slot="end"` must not inherit the button colour
+   twice (the icon is a font glyph, so it just follows `color`) */
+vscode-button .tooltip {
+	color: inherit;
+}

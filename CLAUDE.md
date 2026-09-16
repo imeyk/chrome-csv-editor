@@ -20,6 +20,12 @@ Two worlds live side by side:
 `npx tsc -p ./csvEditorHtml/tsconfig.json` has run. Loading the extension before that
 opens a blank editor.
 
+The Chrome build does **not** load `@vscode/webview-ui-toolkit`, so a `<vscode-checkbox>` /
+`<vscode-dropdown>` in `sandbox.html` is an inert unknown element with no widget and no
+events. New controls go in as plain `input` / `select` / `textarea`, styled from
+`csvEditorHtml/extension-controls.css` — details in
+[`.claude/memory/webview-ui-toolkit-not-loaded.md`](.claude/memory/webview-ui-toolkit-not-loaded.md).
+
 ## Releasing to the Chrome Web Store
 
 **Bump with `npm run bump`, which bumps `manifest.json` and commits it in one step.**

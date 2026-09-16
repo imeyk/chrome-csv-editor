@@ -25,6 +25,10 @@ window.__EDITOR_I18N__ = {
   "QuoteChar": "Символ кавычки",
   "EscapeChar": "Символ экранирования",
   "Encoding": "Кодировка",
+  "Auto detect": "Автоопределение",
+  "Same as read": "Как при чтении",
+  "Same as input": "Как в исходном файле",
+  "Reopen the file to change the read encoding": "Чтобы сменить кодировку чтения, откройте файл заново",
   "Reset data and apply read options": "Сбросить данные и применить параметры чтения",
   "Drop the CSV file to open it": "Перетащите CSV-файл сюда, чтобы открыть"
  },
@@ -51,6 +55,10 @@ window.__EDITOR_I18N__ = {
   "QuoteChar": "Carácter de comilla",
   "EscapeChar": "Carácter de escape",
   "Encoding": "Codificación",
+  "Auto detect": "Detección automática",
+  "Same as read": "Igual que al leer",
+  "Same as input": "Igual que la entrada",
+  "Reopen the file to change the read encoding": "Vuelve a abrir el archivo para cambiar la codificación de lectura",
   "Reset data and apply read options": "Restablecer datos y aplicar opciones de lectura",
   "Drop the CSV file to open it": "Suelta el archivo CSV para abrirlo"
  },
@@ -77,6 +85,10 @@ window.__EDITOR_I18N__ = {
   "QuoteChar": "Anführungszeichen",
   "EscapeChar": "Escape-Zeichen",
   "Encoding": "Kodierung",
+  "Auto detect": "Automatisch erkennen",
+  "Same as read": "Wie beim Lesen",
+  "Same as input": "Wie in der Eingabe",
+  "Reopen the file to change the read encoding": "Datei erneut öffnen, um die Lese-Kodierung zu ändern",
   "Reset data and apply read options": "Daten zurücksetzen und Leseoptionen anwenden",
   "Drop the CSV file to open it": "CSV-Datei hier ablegen zum Öffnen"
  },
@@ -103,6 +115,10 @@ window.__EDITOR_I18N__ = {
   "QuoteChar": "Caractère de guillemet",
   "EscapeChar": "Caractère d'échappement",
   "Encoding": "Encodage",
+  "Auto detect": "Détection automatique",
+  "Same as read": "Comme à la lecture",
+  "Same as input": "Comme l'entrée",
+  "Reopen the file to change the read encoding": "Rouvrez le fichier pour changer l'encodage de lecture",
   "Reset data and apply read options": "Réinitialiser les données et appliquer les options de lecture",
   "Drop the CSV file to open it": "Déposez le fichier CSV pour l'ouvrir"
  },
@@ -129,6 +145,10 @@ window.__EDITOR_I18N__ = {
   "QuoteChar": "Caractere de aspas",
   "EscapeChar": "Caractere de escape",
   "Encoding": "Codificação",
+  "Auto detect": "Detecção automática",
+  "Same as read": "Igual à leitura",
+  "Same as input": "Igual à entrada",
+  "Reopen the file to change the read encoding": "Reabra o arquivo para alterar a codificação de leitura",
   "Reset data and apply read options": "Redefinir dados e aplicar opções de leitura",
   "Drop the CSV file to open it": "Solte o arquivo CSV para abri-lo"
  },
@@ -155,6 +175,10 @@ window.__EDITOR_I18N__ = {
   "QuoteChar": "Carattere virgoletta",
   "EscapeChar": "Carattere di escape",
   "Encoding": "Codifica",
+  "Auto detect": "Rilevamento automatico",
+  "Same as read": "Come in lettura",
+  "Same as input": "Come nell'input",
+  "Reopen the file to change the read encoding": "Riapri il file per cambiare la codifica di lettura",
   "Reset data and apply read options": "Reimposta dati e applica opzioni di lettura",
   "Drop the CSV file to open it": "Rilascia il file CSV per aprirlo"
  },
@@ -181,6 +205,10 @@ window.__EDITOR_I18N__ = {
   "QuoteChar": "引用符文字",
   "EscapeChar": "エスケープ文字",
   "Encoding": "エンコード",
+  "Auto detect": "自動検出",
+  "Same as read": "読み込みと同じ",
+  "Same as input": "入力と同じ",
+  "Reopen the file to change the read encoding": "読み込みエンコードを変更するにはファイルを開き直してください",
   "Reset data and apply read options": "データをリセットして読み込みオプションを適用",
   "Drop the CSV file to open it": "CSV ファイルをドロップして開く"
  },
@@ -207,6 +235,10 @@ window.__EDITOR_I18N__ = {
   "QuoteChar": "引号字符",
   "EscapeChar": "转义字符",
   "Encoding": "编码",
+  "Auto detect": "自动检测",
+  "Same as read": "与读取相同",
+  "Same as input": "与输入相同",
+  "Reopen the file to change the read encoding": "重新打开文件以更改读取编码",
   "Reset data and apply read options": "重置数据并应用读取选项",
   "Drop the CSV file to open it": "拖放 CSV 文件以打开"
  },
@@ -233,6 +265,10 @@ window.__EDITOR_I18N__ = {
   "QuoteChar": "따옴표 문자",
   "EscapeChar": "이스케이프 문자",
   "Encoding": "인코딩",
+  "Auto detect": "자동 감지",
+  "Same as read": "읽기와 동일",
+  "Same as input": "입력과 동일",
+  "Reopen the file to change the read encoding": "읽기 인코딩을 변경하려면 파일을 다시 여세요",
   "Reset data and apply read options": "데이터 재설정 및 읽기 옵션 적용",
   "Drop the CSV file to open it": "CSV 파일을 놓아 열기"
  }
