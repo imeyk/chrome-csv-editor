@@ -30,7 +30,18 @@ window.__EDITOR_I18N__ = {
   "Same as input": "Как в исходном файле",
   "Reopen the file to change the read encoding": "Чтобы сменить кодировку чтения, откройте файл заново",
   "Reset data and apply read options": "Сбросить данные и применить параметры чтения",
-  "Drop the CSV file to open it": "Перетащите CSV-файл сюда, чтобы открыть"
+  "Drop the CSV file to open it": "Перетащите CSV-файл сюда, чтобы открыть",
+  "Clear all filters": "Сбросить все фильтры",
+  "Save filtered CSV": "Сохранить отфильтрованный CSV",
+  "Filter": "Фильтр",
+  "Contains": "Содержит",
+  "Exact match": "Точное совпадение",
+  "Search": "Поиск",
+  "Select all": "Выбрать все",
+  "Clear filter": "Сбросить фильтр",
+  "Close": "Закрыть",
+  "(empty)": "(пусто)",
+  "Not all values are shown": "Показаны не все значения"
  },
  "es": {
   "Read options": "Opciones de lectura",
@@ -60,7 +71,18 @@ window.__EDITOR_I18N__ = {
   "Same as input": "Igual que la entrada",
   "Reopen the file to change the read encoding": "Vuelve a abrir el archivo para cambiar la codificación de lectura",
   "Reset data and apply read options": "Restablecer datos y aplicar opciones de lectura",
-  "Drop the CSV file to open it": "Suelta el archivo CSV para abrirlo"
+  "Drop the CSV file to open it": "Suelta el archivo CSV para abrirlo",
+  "Clear all filters": "Borrar todos los filtros",
+  "Save filtered CSV": "Guardar CSV filtrado",
+  "Filter": "Filtro",
+  "Contains": "Contiene",
+  "Exact match": "Coincidencia exacta",
+  "Search": "Buscar",
+  "Select all": "Seleccionar todo",
+  "Clear filter": "Borrar filtro",
+  "Close": "Cerrar",
+  "(empty)": "(vacío)",
+  "Not all values are shown": "No se muestran todos los valores"
  },
  "de": {
   "Read options": "Leseoptionen",
@@ -90,7 +112,18 @@ window.__EDITOR_I18N__ = {
   "Same as input": "Wie in der Eingabe",
   "Reopen the file to change the read encoding": "Datei erneut öffnen, um die Lese-Kodierung zu ändern",
   "Reset data and apply read options": "Daten zurücksetzen und Leseoptionen anwenden",
-  "Drop the CSV file to open it": "CSV-Datei hier ablegen zum Öffnen"
+  "Drop the CSV file to open it": "CSV-Datei hier ablegen zum Öffnen",
+  "Clear all filters": "Alle Filter zurücksetzen",
+  "Save filtered CSV": "Gefilterte CSV speichern",
+  "Filter": "Filter",
+  "Contains": "Enthält",
+  "Exact match": "Genaue Übereinstimmung",
+  "Search": "Suchen",
+  "Select all": "Alle auswählen",
+  "Clear filter": "Filter zurücksetzen",
+  "Close": "Schließen",
+  "(empty)": "(leer)",
+  "Not all values are shown": "Es werden nicht alle Werte angezeigt"
  },
  "fr": {
   "Read options": "Options de lecture",
@@ -120,7 +153,18 @@ window.__EDITOR_I18N__ = {
   "Same as input": "Comme l'entrée",
   "Reopen the file to change the read encoding": "Rouvrez le fichier pour changer l'encodage de lecture",
   "Reset data and apply read options": "Réinitialiser les données et appliquer les options de lecture",
-  "Drop the CSV file to open it": "Déposez le fichier CSV pour l'ouvrir"
+  "Drop the CSV file to open it": "Déposez le fichier CSV pour l'ouvrir",
+  "Clear all filters": "Effacer tous les filtres",
+  "Save filtered CSV": "Enregistrer le CSV filtré",
+  "Filter": "Filtre",
+  "Contains": "Contient",
+  "Exact match": "Correspondance exacte",
+  "Search": "Rechercher",
+  "Select all": "Tout sélectionner",
+  "Clear filter": "Effacer le filtre",
+  "Close": "Fermer",
+  "(empty)": "(vide)",
+  "Not all values are shown": "Toutes les valeurs ne sont pas affichées"
  },
  "pt": {
   "Read options": "Opções de leitura",
@@ -150,7 +194,18 @@ window.__EDITOR_I18N__ = {
   "Same as input": "Igual à entrada",
   "Reopen the file to change the read encoding": "Reabra o arquivo para alterar a codificação de leitura",
   "Reset data and apply read options": "Redefinir dados e aplicar opções de leitura",
-  "Drop the CSV file to open it": "Solte o arquivo CSV para abri-lo"
+  "Drop the CSV file to open it": "Solte o arquivo CSV para abri-lo",
+  "Clear all filters": "Limpar todos os filtros",
+  "Save filtered CSV": "Salvar CSV filtrado",
+  "Filter": "Filtro",
+  "Contains": "Contém",
+  "Exact match": "Correspondência exata",
+  "Search": "Pesquisar",
+  "Select all": "Selecionar tudo",
+  "Clear filter": "Limpar filtro",
+  "Close": "Fechar",
+  "(empty)": "(vazio)",
+  "Not all values are shown": "Não são exibidos todos os valores"
  },
  "it": {
   "Read options": "Opzioni di lettura",
@@ -180,7 +235,18 @@ window.__EDITOR_I18N__ = {
   "Same as input": "Come nell'input",
   "Reopen the file to change the read encoding": "Riapri il file per cambiare la codifica di lettura",
   "Reset data and apply read options": "Reimposta dati e applica opzioni di lettura",
-  "Drop the CSV file to open it": "Rilascia il file CSV per aprirlo"
+  "Drop the CSV file to open it": "Rilascia il file CSV per aprirlo",
+  "Clear all filters": "Cancella tutti i filtri",
+  "Save filtered CSV": "Salva CSV filtrato",
+  "Filter": "Filtro",
+  "Contains": "Contiene",
+  "Exact match": "Corrispondenza esatta",
+  "Search": "Cerca",
+  "Select all": "Seleziona tutto",
+  "Clear filter": "Cancella filtro",
+  "Close": "Chiudi",
+  "(empty)": "(vuoto)",
+  "Not all values are shown": "Non tutti i valori sono mostrati"
  },
  "ja": {
   "Read options": "読み込みオプション",
@@ -210,7 +276,18 @@ window.__EDITOR_I18N__ = {
   "Same as input": "入力と同じ",
   "Reopen the file to change the read encoding": "読み込みエンコードを変更するにはファイルを開き直してください",
   "Reset data and apply read options": "データをリセットして読み込みオプションを適用",
-  "Drop the CSV file to open it": "CSV ファイルをドロップして開く"
+  "Drop the CSV file to open it": "CSV ファイルをドロップして開く",
+  "Clear all filters": "すべてのフィルターを解除",
+  "Save filtered CSV": "フィルター結果をCSVで保存",
+  "Filter": "フィルター",
+  "Contains": "部分一致",
+  "Exact match": "完全一致",
+  "Search": "検索",
+  "Select all": "すべて選択",
+  "Clear filter": "フィルターを解除",
+  "Close": "閉じる",
+  "(empty)": "(空)",
+  "Not all values are shown": "すべての値は表示されていません"
  },
  "zh": {
   "Read options": "读取选项",
@@ -240,7 +317,18 @@ window.__EDITOR_I18N__ = {
   "Same as input": "与输入相同",
   "Reopen the file to change the read encoding": "重新打开文件以更改读取编码",
   "Reset data and apply read options": "重置数据并应用读取选项",
-  "Drop the CSV file to open it": "拖放 CSV 文件以打开"
+  "Drop the CSV file to open it": "拖放 CSV 文件以打开",
+  "Clear all filters": "清除所有筛选",
+  "Save filtered CSV": "保存筛选后的 CSV",
+  "Filter": "筛选",
+  "Contains": "包含",
+  "Exact match": "完全匹配",
+  "Search": "搜索",
+  "Select all": "全选",
+  "Clear filter": "清除筛选",
+  "Close": "关闭",
+  "(empty)": "(空)",
+  "Not all values are shown": "未显示所有值"
  },
  "ko": {
   "Read options": "읽기 옵션",
@@ -270,13 +358,32 @@ window.__EDITOR_I18N__ = {
   "Same as input": "입력과 동일",
   "Reopen the file to change the read encoding": "읽기 인코딩을 변경하려면 파일을 다시 여세요",
   "Reset data and apply read options": "데이터 재설정 및 읽기 옵션 적용",
-  "Drop the CSV file to open it": "CSV 파일을 놓아 열기"
+  "Drop the CSV file to open it": "CSV 파일을 놓아 열기",
+  "Clear all filters": "모든 필터 지우기",
+  "Save filtered CSV": "필터링된 CSV 저장",
+  "Filter": "필터",
+  "Contains": "포함",
+  "Exact match": "정확히 일치",
+  "Search": "검색",
+  "Select all": "전체 선택",
+  "Clear filter": "필터 지우기",
+  "Close": "닫기",
+  "(empty)": "(비어 있음)",
+  "Not all values are shown": "모든 값이 표시되지 않았습니다"
  }
 };
 
 (function () {
   var lang = (new URLSearchParams(location.search).get('lang') || 'en').toLowerCase();
   var dict = window.__EDITOR_I18N__[lang];
+
+  // Ui that is built at runtime (the column filter panel) is not in the DOM when the walker
+  // below runs, so it asks for its translations directly - see _t() in csvEditorHtml/util.ts.
+  window.__editorTranslate__ = function (text) {
+    if (!dict) return text;
+    return Object.prototype.hasOwnProperty.call(dict, text) ? dict[text] : text;
+  };
+
   if (!dict) return; // english or unsupported -> leave as-is
 
   function apply() {

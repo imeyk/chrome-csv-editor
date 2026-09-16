@@ -589,7 +589,31 @@
 							<span slot="end" class="icon is-small"><i id="tools-menu-btn-icon" class="fas fa-chevron-down"></i></span>
 						</vscode-button>
 
-						<div class="menu" style="width: 10rem;">
+						<div class="menu" style="width: 13rem;">
+
+							<div class="menu-item is-disabled" id="clear-all-filters-menu-item" onclick="clearAllRowFilters()">
+								<span slot="start" class="icon is-small"><i class="fas fa-ban"></i></span>
+								<span style="width: 8rem">Clear all filters</span>
+
+								<span slot="end" class="icon is-small">
+									<span class="tooltip mar-left-half is-tooltip-multiline is-tooltip-left"
+										data-tooltip="Clears the filters of all columns at once, so that every row is displayed again. Filters never change the data itself.">
+										<i class="fas fa-question-circle"></i>
+									</span>
+								</span>
+							</div>
+
+							<div class="menu-item is-disabled" id="save-filtered-csv-menu-item" onclick="postApplyFilteredContent()">
+								<span slot="start" class="icon is-small"><i class="fas fa-file-export"></i></span>
+								<span style="width: 8rem">Save filtered CSV</span>
+
+								<span slot="end" class="icon is-small">
+									<span class="tooltip mar-left-half is-tooltip-multiline is-tooltip-left"
+										data-tooltip="Saves the rows that are displayed after filtering as a new csv file. The source file is not changed, use 'Apply changes to file and save' for that.">
+										<i class="fas fa-question-circle"></i>
+									</span>
+								</span>
+							</div>
 
 							<div class="menu-item" onclick="trimAllCells()">
 								<span slot="start" class="icon is-small"><i class="fas fa-hand-scissors"></i></span>
@@ -930,6 +954,7 @@
 	<script src="../thirdParty/regression/regression.min.js"></script>
 
 	<script src="detect-delimiter.js"></script>
+	<script src="row-filter.js"></script>
 	<script src="out/progressbar.js"></script>
 	<script src="out/findWidget.js"></script>
 	<script src="out/io.js"></script>

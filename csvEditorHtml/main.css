@@ -168,6 +168,117 @@ input.input {
 	margin-right: 4px; /*we need this else the sorting arrow will intersect this and causes flickering*/
 }
 
+/*--- row filtering ---*/
+
+/*the filter icon stays visible once the column is filtered, it is the only indicator that
+  rows are missing*/
+.handsontable th .filter-col {
+	visibility: hidden;
+	margin-right: 4px;
+}
+
+.handsontable th:hover .filter-col,
+.handsontable th .filter-col.filter-col-active {
+	visibility: visible;
+}
+
+.handsontable th .filter-col.filter-col-active {
+	color: var(--focus-border);
+}
+
+.column-filter-panel {
+	position: absolute;
+	z-index: 199; /* modals have 200 */
+	width: 15rem;
+	padding: 0.5rem;
+	border: 1px solid var(--dropdown-border);
+	background-color: var(--dropdown-background);
+	color: var(--foreground);
+	box-shadow: 0 2px 2px 0 rgba(0, 0, 0, 0.14), 0 3px 1px -2px rgba(0, 0, 0, 0.12), 0 1px 5px 0 rgba(0, 0, 0, 0.2);
+}
+
+.column-filter-panel .cfp-modes {
+	display: flex;
+	justify-content: space-between;
+	margin-bottom: 0.4rem;
+}
+
+.column-filter-panel .cfp-modes label {
+	cursor: pointer;
+}
+
+.column-filter-panel .cfp-text {
+	width: 100%;
+	box-sizing: border-box;
+	margin-bottom: 0.4rem;
+	padding: 0.2rem 0.3rem;
+	border: 1px solid var(--dropdown-border);
+	background-color: var(--input-background);
+	color: var(--input-foreground);
+}
+
+.column-filter-panel .cfp-text:focus {
+	outline: 1px solid var(--focus-border);
+}
+
+.column-filter-panel .cfp-all-values {
+	display: block;
+	padding: 0.15rem 0;
+	border-bottom: 1px solid var(--dropdown-border);
+	cursor: pointer;
+}
+
+.column-filter-panel .cfp-values {
+	max-height: 12rem;
+	overflow-y: auto;
+	margin: 0.2rem 0;
+}
+
+.column-filter-panel .cfp-values label {
+	display: flex;
+	align-items: center;
+	padding: 0.1rem 0;
+	cursor: pointer;
+}
+
+.column-filter-panel .cfp-values label:hover {
+	background-color: var(--list-hover-background);
+}
+
+.column-filter-panel .cfp-value {
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+
+.column-filter-panel .cfp-value-empty {
+	font-style: italic;
+	opacity: 0.7;
+}
+
+.column-filter-panel .cfp-note {
+	margin-bottom: 0.3rem;
+	font-size: 0.85em;
+	opacity: 0.7;
+}
+
+.column-filter-panel .cfp-actions {
+	display: flex;
+	justify-content: space-between;
+}
+
+.column-filter-panel .cfp-btn {
+	padding: 0.2rem 0.6rem;
+	border: 1px solid var(--dropdown-border);
+	background-color: var(--button-secondary-background);
+	color: var(--button-secondary-foreground);
+	cursor: pointer;
+}
+
+.column-filter-panel .cfp-btn:hover {
+	background-color: var(--button-secondary-hover-background);
+}
+
 .table-action-buttons {
 	margin: 0.5em 0;
 	position: relative;
@@ -1411,4 +1522,15 @@ h1,h2,h3,h4,h5 {
 
 .btn-with-menu-wrapper .menu .menu-item:active {
 	background-color: rgba(0, 0, 0, 0.3)
+}
+
+/*the filter actions do nothing while no filter is active*/
+.btn-with-menu-wrapper .menu .menu-item.is-disabled {
+	opacity: 0.5;
+	cursor: default;
+}
+
+.btn-with-menu-wrapper .menu .menu-item.is-disabled:hover,
+.btn-with-menu-wrapper .menu .menu-item.is-disabled:active {
+	background-color: var(--button-secondary-background);
 }

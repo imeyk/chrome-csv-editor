@@ -1,5 +1,5 @@
 import { buildCsvUpdateMessages } from './lib/chunk.mjs';
-import { resolveSaveTarget, deriveDownloadName } from './lib/save.mjs';
+import { resolveSaveTarget, deriveDownloadName, deriveFilteredDownloadName } from './lib/save.mjs';
 import { decodeCsvBytes, encodeCsvText } from './lib/decode-text.mjs';
 import { base64ToBytes } from './lib/base64.mjs';
 import {
@@ -201,6 +201,15 @@ async function saveCsv(text) {
   downloadBytes(currentFile.name, bytes);
 }
 
+// "Save filtered CSV": a subset of the rows is a NEW file, so this never goes through the
+// file handle - it would overwrite the source with the filtered rows. Always a download.
+// Encoded exactly like saveCsv(), so the write Encoding option applies here too.
+function saveFilteredCsv(text) {
+  const encoding = resolveWriteEncoding(writeEncodingChoice, currentFile.encoding);
+  const bytes = encodeCsvText(text, { encoding, hadBom: currentFile.hadBom });
+  downloadBytes(deriveFilteredDownloadName(currentFile.name), bytes);
+}
+
 window.addEventListener('message', (e) => {
   if (e.source !== frame.contentWindow) return;
   const msg = e.data || {};
@@ -216,6 +225,8 @@ window.addEventListener('message', (e) => {
     writeEncodingChoice = msg.encoding;
   } else if (msg.command === 'apply') {
     saveCsv(msg.csvContent);
+  } else if (msg.command === 'applyFiltered') {
+    saveFilteredCsv(msg.csvContent);
   } else if (msg.command === 'openFilePicker') {
     // relayed from the editor header's "Open CSV" button (host-bridge.js);
     // the child frame's click propagates user activation to this frame.

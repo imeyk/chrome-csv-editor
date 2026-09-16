@@ -595,6 +595,15 @@ type OverwriteFileMessage = {
 	saveSourceFile: boolean
 }
 
+/**
+ * saves the rows that are visible after filtering as a new file, the source file is left
+ * untouched. Only the Chrome build sends this (the button lives in sandbox.html).
+ */
+type SaveFilteredFileMessage = {
+	command: 'applyFiltered'
+	csvContent: string
+}
+
 type CopyToClipboardMessage = {
 	command: 'copyToClipboard'
 	text: string
@@ -623,7 +632,19 @@ type FilePosition = {
 	endPos: number
 }
 
-type PostMessage = ReadyMessage | DisplayMessageBoxMessage | OverwriteFileMessage | CopyToClipboardMessage | SetEditorHasChangesMessage | SetMultipleCursorsMessage
+type PostMessage = ReadyMessage | DisplayMessageBoxMessage | OverwriteFileMessage | SaveFilteredFileMessage | CopyToClipboardMessage | SetEditorHasChangesMessage | SetMultipleCursorsMessage
+
+/**
+ * how one column is filtered, see csvEditorHtml/row-filter.js
+ */
+type ColumnFilter = {
+	/** how `text` is compared against the cell */
+	mode: 'contains' | 'exact'
+	/** the search text, compared case insensitively, '' does not restrict anything */
+	text: string
+	/** the cell values to keep, or null when no values were picked */
+	values: string[] | null
+}
 
 type VsState = {
 	readOptionIsCollapsed: boolean

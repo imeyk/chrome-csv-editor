@@ -195,11 +195,24 @@ function getFirstRowWithIndexByData(data: string[][], skipCommentLines: boolean 
  * return the data in the handson table as a string (with respect to the write options)
  * if comments are enabled the commentLinesBefore and commentLinesAfter are also used
  * @param {any} csvReadOptions used to check if a row is a comment
- * @param {any} csvWriteOptions 
- * @returns {string} 
+ * @param {any} csvWriteOptions
+ * @param {number[] | null} keepDataRowIndices when given, only these data rows are exported
+ *   (indices into {@link getData}, i.e. the displayed order). Used by "Save filtered CSV";
+ *   null exports everything, which is what normal saving does - see {@link postApplyContent}.
+ * @returns {string}
  */
-function getDataAsCsv(csvReadOptions: CsvReadOptions, csvWriteOptions: CsvWriteOptions): GetDataAsCsvResult {
-	const data = getData()
+function getDataAsCsv(csvReadOptions: CsvReadOptions, csvWriteOptions: CsvWriteOptions, keepDataRowIndices: number[] | null = null): GetDataAsCsvResult {
+	const allData = getData()
+
+	const data = keepDataRowIndices === null
+		? allData
+		: keepDataRowIndices.map(rowIndex => allData[rowIndex])
+
+	//index in `data` -> index in `allData`, needed because the quote information below is
+	//looked up by the row's index in the exported array, which shifts when rows are dropped
+	let dataRowIndexToAllDataRowIndex: number[] | null = keepDataRowIndices === null
+		? null
+		: keepDataRowIndices.slice()
 
 	if (csvWriteOptions.newline === '') {
 		csvWriteOptions.newline = newLineFromInput
@@ -232,6 +245,11 @@ function getDataAsCsv(csvReadOptions: CsvReadOptions, csvWriteOptions: CsvWriteO
 			}
 
 			data.unshift(headerRowWithIndex.row.map<string>((val) => val !== null ? val : ''))
+		}
+
+		//the header is row 0 in both arrays, the data rows moved one down
+		if (dataRowIndexToAllDataRowIndex !== null) {
+			dataRowIndexToAllDataRowIndex = [0, ...dataRowIndexToAllDataRowIndex.map(rowIndex => rowIndex + 1)]
 		}
 	}
 
@@ -295,6 +313,16 @@ function getDataAsCsv(csvReadOptions: CsvReadOptions, csvWriteOptions: CsvWriteO
 			}
 
 			break
+		}
+	}
+
+	//the quote information is looked up by the row's index in the exported array, so when rows
+	//were dropped the index has to be translated back to the one the row had with all rows present
+	if (dataRowIndexToAllDataRowIndex !== null && _conf.determineFieldHasQuotesFunc) {
+		const determineFieldHasQuotesFuncForAllRows = _conf.determineFieldHasQuotesFunc
+		const rowIndexMapping = dataRowIndexToAllDataRowIndex
+		_conf.determineFieldHasQuotesFunc = (content, row, col) => {
+			return determineFieldHasQuotesFuncForAllRows(content, rowIndexMapping[row] ?? row, col)
 		}
 	}
 
@@ -465,6 +493,26 @@ function _postApplyContent(csvContent: string, saveSourceFile: boolean) {
 		command: 'apply',
 		csvContent,
 		saveSourceFile
+	})
+}
+
+/**
+ * called to save the rows that are visible after filtering as a NEW csv file
+ * (the source file is left alone, see extension/editor-host.mjs > saveFilteredCsv).
+ * Deliberately does not clear the unsaved changes indicator: the edits are still
+ * unsaved as far as the source file is concerned.
+ * @param csvContent
+ */
+function _postApplyFilteredContent(csvContent: string) {
+
+	if (!vscode) {
+		console.log(`_postApplyFilteredContent (but in browser)`)
+		return
+	}
+
+	vscode.postMessage({
+		command: 'applyFiltered',
+		csvContent
 	})
 }
 

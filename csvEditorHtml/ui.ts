@@ -657,7 +657,12 @@ function displayData(this: any, csvParseResult: ExtendedCsvParseResult | null, c
 
 	//reset hidden rows/col because we have a new table
 	hiddenPhysicalColumnIndicesSorted = []
-	hiddenPhysicalRowIndicesSorted = []
+	commentHiddenPhysicalRowIndices = []
+	//filters are view state of THIS table, a new table (or a re-parse) starts without them
+	columnFilters = {}
+	filterHiddenPhysicalRowIndices = []
+	closeColumnFilterPanel()
+	_updateHiddenPhysicalRowIndices()
 	firstAndLastVisibleColumns = null
 	firstAndLastVisibleRows = null
 	showOrHideAllComments(true)
@@ -699,9 +704,9 @@ function displayData(this: any, csvParseResult: ExtendedCsvParseResult | null, c
 	const initiallyHideComments = initialConfig ? initialConfig.initiallyHideComments : false
 
 	if (initiallyHideComments && typeof csvReadConfig.comments === 'string') {
-		hiddenPhysicalRowIndicesSorted = _getCommentIndices(csvParseResult.data, csvReadConfig)
 		//no need to map to physical indices because in the beginning they are the same
-		hiddenPhysicalRowIndicesSorted = hiddenPhysicalRowIndicesSorted.sort()
+		commentHiddenPhysicalRowIndices = _getCommentIndices(csvParseResult.data, csvReadConfig)
+		_updateHiddenPhysicalRowIndices()
 	}
 
 	//enable all find connected stuff
@@ -1635,6 +1640,9 @@ function displayData(this: any, csvParseResult: ExtendedCsvParseResult | null, c
 
 			firstAndLastVisibleColumns = getFirstAndLastVisibleColumns()
 
+			//the new column has no filter of its own, the ones after it move up
+			_shiftColumnFiltersOnColumnInsert(hot.toPhysicalColumn(visualColIndex), amount)
+
 			// syncColWidths() //covered by afterRender
 			onAnyChange()
 			//don't call this as it corrupts hot index mappings (because all other hooks need to finish first before we update hot settings)
@@ -1669,7 +1677,11 @@ function displayData(this: any, csvParseResult: ExtendedCsvParseResult | null, c
 					hiddenPhysicalColumnIndicesSorted[i] -= amount
 				}
 			}
-				
+
+			//the filters are keyed by physical column index, so they have to follow too
+			//(done here, where the physical indices are still valid)
+			_shiftColumnFiltersOnColumnRemove(physicalIndex, amount)
+
 		},
 		afterRemoveCol: function (visualColIndex, amount, someting?: any, source?: string) {
 			hasOriginalTableStructuralChanges = true
@@ -1678,6 +1690,10 @@ function displayData(this: any, csvParseResult: ExtendedCsvParseResult | null, c
 			if (!hot) return
 
 			firstAndLastVisibleColumns = getFirstAndLastVisibleColumns()
+
+			//a removed column takes its filter with it, so rows it had hidden come back.
+			//no render here, handsontable renders after the hook anyway
+			_recomputeHiddenRowsFromFilters()
 
 			let isFromUndoRedo = (source === `UndoRedo.undo` || source === `UndoRedo.redo`)
 			if (headerRowWithIndex && !isFromUndoRedo) { //undo redo is already handled
@@ -1720,13 +1736,21 @@ function displayData(this: any, csvParseResult: ExtendedCsvParseResult | null, c
 			let physicalIndex = hot.toPhysicalRow(visualRowIndex)
 			cellIsQuotedInfoPhysicalIndices.splice(physicalIndex, amount)
 
-			for (let i = 0; i < hiddenPhysicalRowIndicesSorted.length; i++) {
-				const hiddenPhysicalRowIndex = hiddenPhysicalRowIndicesSorted[i];
+			for (let i = 0; i < commentHiddenPhysicalRowIndices.length; i++) {
+				const hiddenPhysicalRowIndex = commentHiddenPhysicalRowIndices[i];
 
 				if (hiddenPhysicalRowIndex >= physicalIndex) {
-					hiddenPhysicalRowIndicesSorted[i] -= amount
+					commentHiddenPhysicalRowIndices[i] -= amount
 				}
 			}
+
+			//the removed rows must LEAVE the filtered-out set, they are gone - only shifting
+			//(as above) would leave an entry that now points at the row which took the index
+			filterHiddenPhysicalRowIndices = filterHiddenPhysicalRowIndices
+				.filter(p => p < physicalIndex || p >= physicalIndex + amount)
+				.map(p => p >= physicalIndex ? p - amount : p)
+
+			_updateHiddenPhysicalRowIndices()
 
 		},
 		afterRemoveRow: function (visualRowIndex, amount) {
@@ -2016,7 +2040,9 @@ function displayData(this: any, csvParseResult: ExtendedCsvParseResult | null, c
 			//some hack so that the renderer still respects the row... (also see http://embed.plnkr.co/lBmuxU/)
 			//this is needed else we render all hidden rows as blank spaces (we see a scrollbar but not rows/cells)
 			//but this means we will lose performance because hidden rows are still managed and rendered (even if not visible)
-			if (hiddenPhysicalRowIndicesSorted.includes(actualPhysicalIndex)) {
+			//via the lookup and not the array: this runs for every row on every render and a
+			//filter can hide most of the file, which made the array scan quadratic
+			if (hiddenPhysicalRowIndicesLookup[actualPhysicalIndex]) {
 				//sub 1 height is treated by the virtual renderer as height 0??
 				//we better add some more zeros
 				return 0.000001
@@ -2564,14 +2590,19 @@ function defaultColHeaderFunc(useLettersAsColumnNames: boolean, columnNamesStart
 
 	visualIndex = hot.toVisualColumn(colIndex)
 
+	//filtering only changes what is displayed, so it stays available in readonly mode.
+	//the physical index is passed on because a filter belongs to the column, not to its
+	//current position (see the row filtering section below)
+	const filterButton = `<span class="filter-col clickable${isColumnFilterActive(colIndex) ? ` filter-col-active` : ``}" onclick="toggleColumnFilterPanel(${colIndex}, event)"><i class="fas fa-filter"></i></span>`
+
 	let showDeleteColumnHeaderButton = initialConfig?.showDeleteColumnHeaderButton ?? true //default is true
 
 	if (hot.countCols() === 1 || isReadonlyMode || showDeleteColumnHeaderButton === false) {
 		//do not remove the (hidden) icon to prevent "jumping" / size changing when this gets toggled
-		return `${text} <span class="remove-col clickable" style="visibility: hidden"><i class="fas fa-trash"></i></span>`
+		return `${text} ${filterButton} <span class="remove-col clickable" style="visibility: hidden"><i class="fas fa-trash"></i></span>`
 	}
 
-	return `${text} <span class="remove-col clickable" onclick="removeColumn(${visualIndex})"><i class="fas fa-trash"></i></span>`
+	return `${text} ${filterButton} <span class="remove-col clickable" onclick="removeColumn(${visualIndex})"><i class="fas fa-trash"></i></span>`
 }
 
 /**
@@ -2872,24 +2903,51 @@ function transposeColumsAndRows() {
 	}, 0)
 }
 
+/**
+ * recomputes {@link hiddenPhysicalRowIndicesSorted} (and its lookup) from its two sources:
+ * rows hidden because comments are hidden and rows hidden because they do not match the
+ * column filters. This is the ONLY place that writes hiddenPhysicalRowIndicesSorted.
+ */
+function _updateHiddenPhysicalRowIndices() {
+
+	const lookup: { [physicalRowIndex: number]: boolean } = {}
+	const merged: number[] = []
+
+	const collectInto = (indices: number[]) => {
+		for (let i = 0; i < indices.length; i++) {
+			const physicalRowIndex = indices[i]
+			if (lookup[physicalRowIndex]) continue
+			lookup[physicalRowIndex] = true
+			merged.push(physicalRowIndex)
+		}
+	}
+
+	collectInto(commentHiddenPhysicalRowIndices)
+	collectInto(filterHiddenPhysicalRowIndices)
+
+	//with a numeric compare: the default sort compares as strings, which sorts 10 before 9
+	hiddenPhysicalRowIndicesSorted = merged.sort((a, b) => a - b)
+	hiddenPhysicalRowIndicesLookup = lookup
+}
+
 function showOrHideAllComments(show: boolean) {
 
 	if (show) {
 		showCommentsBtn.style.display = 'none'
 		hideCommentsBtn.style.display = ''
 
-		hiddenPhysicalRowIndicesSorted = []
+		commentHiddenPhysicalRowIndices = []
 	}
 	else {
 		showCommentsBtn.style.display = ''
 		hideCommentsBtn.style.display = 'none'
 
 		if (hot) {
-			hiddenPhysicalRowIndicesSorted = _getCommentIndices(getData(), defaultCsvReadOptions)
-			hiddenPhysicalRowIndicesSorted = hiddenPhysicalRowIndicesSorted.map(p => hot!.toPhysicalRow(p))
-			hiddenPhysicalRowIndicesSorted = hiddenPhysicalRowIndicesSorted.sort()
+			commentHiddenPhysicalRowIndices = _getCommentIndices(getData(), defaultCsvReadOptions)
+				.map(p => hot!.toPhysicalRow(p))
 		}
 	}
+	_updateHiddenPhysicalRowIndices()
 	firstAndLastVisibleRows = getFirstAndLastVisibleRows()
 
 	if (!hot) return
@@ -2899,6 +2957,481 @@ function showOrHideAllComments(show: boolean) {
 
 function getAreCommentsDisplayed(): boolean {
 	return showCommentsBtn.style.display === 'none'
+}
+
+/* --- row filtering --- */
+// The matching itself is in csvEditorHtml/row-filter.js (pure and unit tested), here we only
+// connect it to handsontable and build the panel in the column header.
+//
+// Rows are HIDDEN (see _updateHiddenPhysicalRowIndices), never removed, so the data stays
+// complete and hot.getData() - and with it normal saving - still sees the whole file.
+// Only "Save filtered CSV" (postApplyFilteredContent) restricts itself to the visible rows.
+//
+// Filters are view state of the current table: opening another file or re-parsing the data
+// drops them (see displayData), and they are not re-evaluated while cells are edited - the
+// same choice the find widget makes for its results. Because of that the displayed rows,
+// the row count and "Save filtered CSV" all read the SAME set of hidden rows and can never
+// disagree with each other.
+
+let _columnFilterPanelOutsideMouseDownHandler: ((e: MouseEvent) => void) | null = null
+let _columnFilterPanelKeyDownHandler: ((e: KeyboardEvent) => void) | null = null
+
+function isColumnFilterActive(physicalColIndex: number): boolean {
+	return !csvRowFilter.isColumnFilterEmpty(columnFilters[physicalColIndex])
+}
+
+function hasActiveRowFilters(): boolean {
+	return csvRowFilter.countActiveFilters(columnFilters) > 0
+}
+
+/**
+ * recomputes which rows the filters hide, updates the ui and re-renders the table
+ */
+function applyRowFilters() {
+
+	if (!hot) return
+
+	_recomputeHiddenRowsFromFilters()
+	hot.render()
+}
+
+/**
+ * the part of {@link applyRowFilters} that does not render, for use inside handsontable
+ * hooks (rendering from within a hook corrupts the index mappings)
+ */
+function _recomputeHiddenRowsFromFilters() {
+
+	filterHiddenPhysicalRowIndices = _getFilterHiddenPhysicalRowIndices()
+
+	_updateHiddenPhysicalRowIndices()
+	firstAndLastVisibleRows = getFirstAndLastVisibleRows()
+	_updateRowCountIndicator()
+	_updateRowFilterIndicators()
+}
+
+/**
+ * @returns the physical indices of the rows that do NOT match the active column filters
+ */
+function _getFilterHiddenPhysicalRowIndices(): number[] {
+
+	if (!hot || !hasActiveRowFilters()) return []
+
+	//one column at a time: getDataAtCol is much cheaper than copying the whole table with
+	//getData(), and only the filtered columns are needed at all.
+	//the filters are keyed by physical column index (so a filter follows its column when
+	//columns are moved) while the data comes in the displayed order -> translate once, here
+	const activeFilters: { filter: ColumnFilter, columnValues: any[] }[] = []
+
+	for (const key in columnFilters) {
+		if (!Object.prototype.hasOwnProperty.call(columnFilters, key)) continue
+
+		const filter = columnFilters[Number(key)]
+		if (csvRowFilter.isColumnFilterEmpty(filter)) continue
+
+		const visualColIndex = hot.toVisualColumn(Number(key))
+		//null/-1 when the column is gone, then there is nothing left to filter on
+		if (visualColIndex === null || visualColIndex < 0) continue
+
+		activeFilters.push({ filter: filter, columnValues: hot.getDataAtCol(visualColIndex) })
+	}
+
+	if (activeFilters.length === 0) return []
+
+	const hiddenPhysicalRowIndices: number[] = []
+	const rowCount = hot.countRows()
+
+	for (let visualRowIndex = 0; visualRowIndex < rowCount; visualRowIndex++) {
+
+		let isVisible = true
+		for (let i = 0; i < activeFilters.length; i++) {
+			const activeFilter = activeFilters[i]
+			if (csvRowFilter.cellMatchesColumnFilter(activeFilter.columnValues[visualRowIndex], activeFilter.filter)) continue
+			//all active filters must match, so one miss is enough
+			isVisible = false
+			break
+		}
+
+		if (!isVisible) hiddenPhysicalRowIndices.push(hot.toPhysicalRow(visualRowIndex))
+	}
+
+	return hiddenPhysicalRowIndices
+}
+
+/**
+ * keeps the filter keys correct when columns are inserted
+ * @param physicalColIndex the physical index the new columns were inserted at
+ * @param amount how many columns were inserted
+ */
+function _shiftColumnFiltersOnColumnInsert(physicalColIndex: number, amount: number) {
+
+	const shiftedFilters: { [physicalColIndex: number]: ColumnFilter } = {}
+
+	for (const key in columnFilters) {
+		if (!Object.prototype.hasOwnProperty.call(columnFilters, key)) continue
+
+		const filteredPhysicalColIndex = Number(key)
+		const newIndex = filteredPhysicalColIndex >= physicalColIndex
+			? filteredPhysicalColIndex + amount
+			: filteredPhysicalColIndex
+
+		shiftedFilters[newIndex] = columnFilters[filteredPhysicalColIndex]
+	}
+
+	columnFilters = shiftedFilters
+}
+
+/**
+ * keeps the filter keys correct when columns are removed, the filters of the removed
+ * columns are dropped
+ * @param physicalColIndex the physical index of the first removed column
+ * @param amount how many columns were removed
+ */
+function _shiftColumnFiltersOnColumnRemove(physicalColIndex: number, amount: number) {
+
+	const shiftedFilters: { [physicalColIndex: number]: ColumnFilter } = {}
+
+	for (const key in columnFilters) {
+		if (!Object.prototype.hasOwnProperty.call(columnFilters, key)) continue
+
+		const filteredPhysicalColIndex = Number(key)
+
+		//the filtered column itself is gone
+		if (filteredPhysicalColIndex >= physicalColIndex && filteredPhysicalColIndex < physicalColIndex + amount) continue
+
+		const newIndex = filteredPhysicalColIndex >= physicalColIndex
+			? filteredPhysicalColIndex - amount
+			: filteredPhysicalColIndex
+
+		shiftedFilters[newIndex] = columnFilters[filteredPhysicalColIndex]
+	}
+
+	columnFilters = shiftedFilters
+}
+
+/**
+ * clears the filters of all columns at once
+ */
+function clearAllRowFilters() {
+
+	if (!hasActiveRowFilters()) return
+
+	columnFilters = {}
+	closeColumnFilterPanel()
+	applyRowFilters()
+}
+
+/**
+ * enables/disables the filter actions in the tools menu
+ */
+function _updateRowFilterIndicators() {
+
+	const hasFilters = hasActiveRowFilters()
+
+	if (clearAllFiltersMenuItem) {
+		clearAllFiltersMenuItem.classList.toggle(`is-disabled`, !hasFilters)
+	}
+	if (saveFilteredCsvMenuItem) {
+		saveFilteredCsvMenuItem.classList.toggle(`is-disabled`, !hasFilters)
+	}
+}
+
+/**
+ * the visual row indices that are displayed with the current filters, in display order.
+ * Reads the hidden rows instead of re-running the filters so that what is saved is exactly
+ * what is on screen.
+ */
+function getVisibleDataRowIndices(): number[] {
+
+	if (!hot) return []
+
+	const isFilteredOut: { [physicalRowIndex: number]: boolean } = {}
+	for (let i = 0; i < filterHiddenPhysicalRowIndices.length; i++) {
+		isFilteredOut[filterHiddenPhysicalRowIndices[i]] = true
+	}
+
+	const visualRowIndices: number[] = []
+	const rowCount = hot.countRows()
+
+	for (let visualRowIndex = 0; visualRowIndex < rowCount; visualRowIndex++) {
+		if (isFilteredOut[hot.toPhysicalRow(visualRowIndex)]) continue
+		visualRowIndices.push(visualRowIndex)
+	}
+
+	return visualRowIndices
+}
+
+/**
+ * called from ui: saves the rows that are visible after filtering as a new csv file.
+ * The source file is not touched, that is what "Apply changes to file and save" is for.
+ */
+function postApplyFilteredContent() {
+
+	if (!hot) return
+	if (!hasActiveRowFilters()) return
+
+	const unparseResult = getDataAsCsv(defaultCsvReadOptions, defaultCsvWriteOptions, getVisibleDataRowIndices())
+
+	//deliberately NOT touching outCsvFieldToInputPositionMapping or the unsaved changes
+	//state: this wrote another file, the source file still has the unsaved edits
+	_postApplyFilteredContent(unparseResult.csv)
+}
+
+/**
+ * opens the filter panel of a column, or closes it when it is already open for that column
+ * @param physicalColIndex the physical column index (as given to defaultColHeaderFunc)
+ * @param event the click on the filter icon
+ */
+function toggleColumnFilterPanel(physicalColIndex: number, event: MouseEvent) {
+
+	//the click must not reach handsontable, it would sort or select the column
+	event.stopPropagation()
+	event.preventDefault()
+
+	const wasOpenForThisColumn = openColumnFilterPanelPhysicalColIndex === physicalColIndex
+	const headerCell = (event.target as HTMLElement).closest(`th`) as HTMLElement | null
+
+	closeColumnFilterPanel()
+
+	if (wasOpenForThisColumn || !headerCell) return
+
+	_showColumnFilterPanel(physicalColIndex, headerCell)
+}
+
+function closeColumnFilterPanel() {
+
+	if (_columnFilterPanelOutsideMouseDownHandler) {
+		document.removeEventListener(`mousedown`, _columnFilterPanelOutsideMouseDownHandler, true)
+		_columnFilterPanelOutsideMouseDownHandler = null
+	}
+	if (_columnFilterPanelKeyDownHandler) {
+		document.removeEventListener(`keydown`, _columnFilterPanelKeyDownHandler, true)
+		_columnFilterPanelKeyDownHandler = null
+	}
+
+	if (columnFilterPanelEl) {
+		columnFilterPanelEl.remove()
+		columnFilterPanelEl = null
+	}
+
+	openColumnFilterPanelPhysicalColIndex = null
+}
+
+/**
+ * builds the filter panel of a column and places it under the column header
+ * @param physicalColIndex the physical column index
+ * @param headerCell the th element of that column
+ */
+function _showColumnFilterPanel(physicalColIndex: number, headerCell: HTMLElement) {
+
+	if (!hot) return
+
+	const visualColIndex = hot.toVisualColumn(physicalColIndex)
+	if (visualColIndex === null || visualColIndex < 0) return
+
+	const storedFilter = columnFilters[physicalColIndex]
+	//edited in place and only copied into columnFilters when something changed
+	const filter: ColumnFilter = storedFilter
+		? {
+			mode: storedFilter.mode,
+			text: storedFilter.text,
+			values: storedFilter.values === null ? null : storedFilter.values.slice(),
+		}
+		: { mode: 'contains', text: '', values: null }
+
+	const commit = () => {
+		if (csvRowFilter.isColumnFilterEmpty(filter)) {
+			delete columnFilters[physicalColIndex]
+		}
+		else {
+			columnFilters[physicalColIndex] = {
+				mode: filter.mode,
+				text: filter.text,
+				values: filter.values === null ? null : filter.values.slice(),
+			}
+		}
+		applyRowFilters()
+	}
+
+	const panel = document.createElement(`div`)
+	panel.className = `column-filter-panel`
+
+	//--- text search, with its two modes
+	const modesWrapper = document.createElement(`div`)
+	modesWrapper.className = `cfp-modes`
+
+	const modes: { mode: ColumnFilter["mode"], label: string }[] = [
+		{ mode: 'contains', label: `Contains` },
+		{ mode: 'exact', label: `Exact match` },
+	]
+
+	for (let i = 0; i < modes.length; i++) {
+		const entry = modes[i]
+
+		const modeLabel = document.createElement(`label`)
+		const modeRadio = document.createElement(`input`)
+		modeRadio.type = `radio`
+		modeRadio.name = `column-filter-mode`
+		modeRadio.checked = filter.mode === entry.mode
+		modeRadio.addEventListener(`change`, () => {
+			filter.mode = entry.mode
+			commit()
+		})
+
+		modeLabel.appendChild(modeRadio)
+		modeLabel.appendChild(document.createTextNode(` ${_t(entry.label)}`))
+		modesWrapper.appendChild(modeLabel)
+	}
+	panel.appendChild(modesWrapper)
+
+	const textInput = document.createElement(`input`)
+	textInput.type = `text`
+	textInput.className = `cfp-text`
+	textInput.placeholder = _t(`Search`)
+	textInput.value = filter.text
+
+	//debounced: every keystroke would otherwise walk the whole column
+	const commitTextDebounced = debounce(() => {
+		filter.text = textInput.value
+		commit()
+	}, 250)
+	textInput.addEventListener(`input`, commitTextDebounced as any)
+
+	panel.appendChild(textInput)
+
+	//--- the unique values of this column
+	const columnValues = csvRowFilter.collectColumnValues(hot.getDataAtCol(visualColIndex))
+	const valueCheckboxes: { value: string, checkbox: HTMLInputElement }[] = []
+
+	const allValuesLabel = document.createElement(`label`)
+	allValuesLabel.className = `cfp-all-values`
+	const allValuesCheckbox = document.createElement(`input`)
+	allValuesCheckbox.type = `checkbox`
+	allValuesCheckbox.checked = filter.values === null
+	allValuesLabel.appendChild(allValuesCheckbox)
+	allValuesLabel.appendChild(document.createTextNode(` ${_t(`Select all`)}`))
+	panel.appendChild(allValuesLabel)
+
+	const readValueSelection = () => {
+		const selectedValues: string[] = []
+		let areAllChecked = true
+
+		for (let i = 0; i < valueCheckboxes.length; i++) {
+			if (valueCheckboxes[i].checkbox.checked) {
+				selectedValues.push(valueCheckboxes[i].value)
+			} else {
+				areAllChecked = false
+			}
+		}
+
+		//everything checked means "do not restrict by value". With a truncated list this is
+		//the only sane reading: we cannot list values we never collected
+		filter.values = areAllChecked ? null : selectedValues
+		allValuesCheckbox.checked = areAllChecked
+	}
+
+	allValuesCheckbox.addEventListener(`change`, () => {
+		for (let i = 0; i < valueCheckboxes.length; i++) {
+			valueCheckboxes[i].checkbox.checked = allValuesCheckbox.checked
+		}
+		readValueSelection()
+		commit()
+	})
+
+	const valuesList = document.createElement(`div`)
+	valuesList.className = `cfp-values`
+
+	for (let i = 0; i < columnValues.values.length; i++) {
+		const value = columnValues.values[i]
+
+		const valueLabel = document.createElement(`label`)
+		const valueCheckbox = document.createElement(`input`)
+		valueCheckbox.type = `checkbox`
+		valueCheckbox.checked = filter.values === null || filter.values.indexOf(value) !== -1
+		valueCheckbox.addEventListener(`change`, () => {
+			readValueSelection()
+			commit()
+		})
+
+		valueLabel.appendChild(valueCheckbox)
+		const valueText = document.createElement(`span`)
+		valueText.className = value === `` ? `cfp-value cfp-value-empty` : `cfp-value`
+		valueText.textContent = value === `` ? _t(`(empty)`) : value
+		valueText.title = value
+		valueLabel.appendChild(valueText)
+
+		valuesList.appendChild(valueLabel)
+		valueCheckboxes.push({ value: value, checkbox: valueCheckbox })
+	}
+	panel.appendChild(valuesList)
+
+	if (columnValues.truncated) {
+		const truncatedNote = document.createElement(`div`)
+		truncatedNote.className = `cfp-note`
+		truncatedNote.textContent = _t(`Not all values are shown`)
+		panel.appendChild(truncatedNote)
+	}
+
+	//--- actions
+	const actions = document.createElement(`div`)
+	actions.className = `cfp-actions`
+
+	const clearButton = document.createElement(`button`)
+	clearButton.className = `cfp-btn`
+	clearButton.textContent = _t(`Clear filter`)
+	clearButton.addEventListener(`click`, () => {
+		//reset the controls in place instead of rebuilding the panel: after the re-render
+		//the header cell this panel is placed under is a different element
+		textInput.value = ``
+		filter.text = ``
+		for (let i = 0; i < valueCheckboxes.length; i++) {
+			valueCheckboxes[i].checkbox.checked = true
+		}
+		readValueSelection()
+		commit()
+	})
+	actions.appendChild(clearButton)
+
+	const closeButton = document.createElement(`button`)
+	closeButton.className = `cfp-btn`
+	closeButton.textContent = _t(`Close`)
+	closeButton.addEventListener(`click`, () => closeColumnFilterPanel())
+	actions.appendChild(closeButton)
+
+	panel.appendChild(actions)
+
+	//append before measuring, the width is needed to keep the panel inside the window
+	document.body.appendChild(panel)
+
+	const headerCellRect = headerCell.getBoundingClientRect()
+	let left = headerCellRect.left + window.pageXOffset
+	const maxLeft = window.pageXOffset + document.documentElement.clientWidth - panel.offsetWidth - 4
+	if (left > maxLeft) left = Math.max(window.pageXOffset, maxLeft)
+
+	panel.style.left = `${left}px`
+	panel.style.top = `${headerCellRect.bottom + window.pageYOffset}px`
+
+	columnFilterPanelEl = panel
+	openColumnFilterPanelPhysicalColIndex = physicalColIndex
+
+	//a click anywhere else closes the panel. Capture phase, because handsontable stops
+	//propagation of some of its own events
+	_columnFilterPanelOutsideMouseDownHandler = (e: MouseEvent) => {
+		const target = e.target as HTMLElement | null
+		if (!target) return
+		if (panel.contains(target)) return
+		//the icon itself toggles, let it do that on its own
+		if (target.closest(`.filter-col`)) return
+		closeColumnFilterPanel()
+	}
+	document.addEventListener(`mousedown`, _columnFilterPanelOutsideMouseDownHandler, true)
+
+	_columnFilterPanelKeyDownHandler = (e: KeyboardEvent) => {
+		if (e.key !== `Escape`) return
+		closeColumnFilterPanel()
+	}
+	document.addEventListener(`keydown`, _columnFilterPanelKeyDownHandler, true)
+
+	textInput.focus()
 }
 
 function _setHasUnsavedChangesUiIndicator(hasUnsavedChanges: boolean) {
@@ -3138,6 +3671,9 @@ function setupScrollListeners() {
 
 function _onTableScroll(e: Event) {
 
+	//the panel is positioned over a header cell that just moved away under it
+	closeColumnFilterPanel()
+
 	if (!editHeaderCellTextInputEl) return
 	let scrollLeft = (e.target as HTMLElement).scrollLeft
 	editHeaderCellTextInputEl.style.left = `${editHeaderCellTextInputLeftOffsetInPx - (scrollLeft - handsontableOverlayScrollLeft)}px`
@@ -3339,13 +3875,19 @@ function afterCreateRow(visualRowIndex: number, amount: number) {
 	//TODO this only works because for some reason for new rows the physical index is the same as the visual index!?!?
 	//  but it sould not work for the other rows???
 
-	for (let i = 0; i < hiddenPhysicalRowIndicesSorted.length; i++) {
-		const hiddenPhysicalRowIndex = hiddenPhysicalRowIndicesSorted[i];
-
-		if (hiddenPhysicalRowIndex >= visualRowIndex) {
-			hiddenPhysicalRowIndicesSorted[i] += amount
+	//both sources shift: the inserted rows themselves are in neither of them, so a row added
+	//while a filter is active stays visible (it is where the user asked for it)
+	const shiftHiddenRowIndices = (indices: number[]) => {
+		for (let i = 0; i < indices.length; i++) {
+			if (indices[i] >= visualRowIndex) {
+				indices[i] += amount
+			}
 		}
 	}
+	shiftHiddenRowIndices(commentHiddenPhysicalRowIndices)
+	shiftHiddenRowIndices(filterHiddenPhysicalRowIndices)
+	_updateHiddenPhysicalRowIndices()
+
 	firstAndLastVisibleRows = getFirstAndLastVisibleRows()
 	onAnyChange()
 	//dont' call this as it corrupts hot index mappings (because all other hooks need to finish first before we update hot settings)

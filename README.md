@@ -9,6 +9,9 @@ A Chrome MV3 extension that opens and edits CSV/TSV files in a sandboxed, Excel-
 - Opens CSV/TSV files in a full-featured table editor (powered by [edit-csv](https://edit-csv.net)).
 - Intercepts navigations to `file://` CSV paths and redirects them into the editor.
 - Supports drag-and-drop, the system file picker, right-click context menu on CSV links, and direct `file://` URL navigation.
+- Filters rows per column (text search — substring or exact — and a pick list of the column's
+  values), combining the filters of several columns; `Tools ▸ Save filtered CSV` writes the
+  displayed rows to a separate file.
 - Saves back in-place (when a file handle is available) or falls back to a browser download.
 
 ---
@@ -117,6 +120,11 @@ After this, double-clicking a `.csv` in Finder opens it in Chrome, which the ext
 |---|---|
 | File picker (`Open CSV…`) or drag-and-drop on a supported browser | **In-place overwrite** using the File System Access API handle. |
 | Right-click context menu, `file://` URL navigation, or drag-and-drop without a handle | **Download** — the browser saves an edited copy (filename prefixed or unchanged). |
+
+`Tools ▸ Save filtered CSV` is the one exception: it always **downloads** a new file
+(`data.csv` → `data.filtered.csv`) with only the rows that are displayed after filtering, and
+never touches the source file. Filtering only changes what is displayed, so the normal save
+keeps writing the whole file no matter which filters are active.
 
 ---
 
