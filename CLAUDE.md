@@ -1,5 +1,7 @@
 # Working in this repo
 
+> Накопленные заметки по проекту (решения, инциденты, договорённости) — `.claude/memory/`, индекс — `.claude/memory/MEMORY.md`. Новые факты о проекте писать туда же, а не в память сессии.
+
 ## What this is
 
 A Chrome MV3 extension ("Edit CSV") forked from the VS Code extension `vscode-csv-edit`.
@@ -17,6 +19,12 @@ Two worlds live side by side:
 `csvEditorHtml/out/*.js` is git-ignored, so a fresh clone has **no editor code** until
 `npx tsc -p ./csvEditorHtml/tsconfig.json` has run. Loading the extension before that
 opens a blank editor.
+
+The Chrome build does **not** load `@vscode/webview-ui-toolkit`, so a `<vscode-checkbox>` /
+`<vscode-dropdown>` in `sandbox.html` is an inert unknown element with no widget and no
+events. New controls go in as plain `input` / `select` / `textarea`, styled from
+`csvEditorHtml/extension-controls.css` — details in
+[`.claude/memory/webview-ui-toolkit-not-loaded.md`](.claude/memory/webview-ui-toolkit-not-loaded.md).
 
 ## Releasing to the Chrome Web Store
 

@@ -13,6 +13,9 @@
 	<link rel="stylesheet" href="./light.css">
 	<link rel="stylesheet" href="./high_contrast.css">
 	<link rel="stylesheet" href="./settingsOverwrite.css">
+	<!-- Chrome extension only: the VS Code webview UI toolkit is not loaded here, so the
+	     options bar uses plain html controls that need the toolkit's look (see the file). -->
+	<link rel="stylesheet" href="./extension-controls.css">
 	<style>
 		/* Chrome extension: theme follows the browser/OS light-dark preference
 		   (set via host-bridge.js). We can only detect light/dark, not read the
@@ -270,20 +273,21 @@
 						<td>
 								<div id="read-options-content" class="options-content on-readonly-disable-div">
 
-										<div class="field same-line" style="display: none;">
-											<label>Encoding</label>
+										<div class="field same-line">
+											<label for="read-option-encoding">Encoding</label>
 											<div class="select">
-												<vscode-dropdown id="read-option-encoding" style="width: 11rem;">
-													<vscode-option id="read-option-encoding-auto" value="auto">Auto detect</vscode-option>
-													<!-- options will be auto inserted here -->
-												</vscode-dropdown>
+												<select id="read-option-encoding" style="width: 13rem;">
+													<option id="read-option-encoding-auto" value="auto">Auto detect</option>
+													<!-- the host fills in the rest (see host-bridge.js) -->
+												</select>
 											</div>
 										</div>
 
 										<div class="field">
-											<vscode-checkbox id="has-header" type="checkbox" name="has-header" class="" checked="checked" onchange="tryApplyHasHeader(true, false)">
+											<input id="has-header" type="checkbox" name="has-header" class="ext-checkbox" checked="checked" onchange="tryApplyHasHeader(true, false)">
+											<label class="ext-checkbox-label" for="has-header">
 												<span id="has-header-label">Has header</span>
-											</vscode-checkbox>
+											</label>
 											<span class="tooltip is-tooltip-right is-tooltip-multiline"
 												data-tooltip="Use the first row as header in the table. Note that changing this option will also change the write header option. It will also clear the undo/redo stack! If the table has only one row this cannot be applied immediately, it will be applied if the table has more than one row. [the readOption_hasHeader and tryToGuessHasHeader settings control this]">
 												<i class="fas fa-question-circle"></i>
@@ -370,19 +374,21 @@
 						<td>
 								<div id="write-options-content" class="options-content on-readonly-disable-div">
 
-									<div class="field same-line" style="display: none;">
-										<label>Encoding</label>
+									<div class="field same-line">
+										<label for="write-option-encoding">Encoding</label>
 										<div class="select">
-											<vscode-dropdown id="write-option-encoding" style="width: 11rem;">
-												<vscode-option value="auto">Same as read</vscode-option>
-											</vscode-dropdown>
+											<select id="write-option-encoding" style="width: 13rem;">
+												<option id="write-option-encoding-auto" value="auto">Same as read</option>
+												<!-- the host fills in the rest (see host-bridge.js) -->
+											</select>
 										</div>
 									</div>
 
 									<div class="field">
-										<vscode-checkbox id="has-header-write" type="checkbox" name="has-header-write" class="" checked="checked" onchange="setHasHeaderWrite()">
+										<input id="has-header-write" type="checkbox" name="has-header-write" class="ext-checkbox" checked="checked" onchange="setHasHeaderWrite()">
+										<label class="ext-checkbox-label" for="has-header-write">
 											<span>Write header</span>
-										</vscode-checkbox>
+										</label>
 										<span class="tooltip is-tooltip-bottom" data-tooltip="Checked: writes the header row, unchecked: not">
 											<i class="fas fa-question-circle"></i>
 										</span>
@@ -445,22 +451,24 @@
 				
 									<div class="flexed">
 										<div class="field">
-											<vscode-checkbox id="quote-all-fields-write" type="checkbox" name="quote-all-fields-write" class="" checked="checked" onchange="setQuoteAllFieldsWrite()">
-											<span>Quote all fields</span>
-											</vscode-checkbox>
+											<input id="quote-all-fields-write" type="checkbox" name="quote-all-fields-write" class="ext-checkbox" checked="checked" onchange="setQuoteAllFieldsWrite()">
+											<label class="ext-checkbox-label" for="quote-all-fields-write">
+												<span>Quote all fields</span>
+											</label>
 										</div>
 									</div>
 				
-									<!-- see help modal why -->
-									<div class="flexed" style="display: none;">
+									<!-- hidden in the VS Code build (the editor does not own the file there);
+									     the extension writes the file itself, so it can offer this -->
+									<div class="flexed">
 										<div class="field same-line" title="End of line terminator">
-											<label for="comment-string-write">EOL</label>
+											<label for="newline-select-write">EOL</label>
 											<div class="select">
-												<vscode-dropdown id="newline-select-write" onchange="setNewLineWrite()">
-													<vscode-option id="newline-same-as-input-option" value="">Same as input</vscode-option>
-													<vscode-option value="lf">Linux/Mac (LF)</vscode-option>
-													<vscode-option value="crlf">Windows (CRLF)</vscode-option>
-												</vscode-dropdown>
+												<select id="newline-select-write" onchange="setNewLineWrite()">
+													<option id="newline-same-as-input-option" value="">Same as input</option>
+													<option value="lf">Linux/Mac (LF)</option>
+													<option value="crlf">Windows (CRLF)</option>
+												</select>
 											</div>
 										</div>
 									</div>
@@ -469,7 +477,7 @@
 						</td>
 						<td>
 							<div id="preview-content" class="options-content">
-								<vscode-text-area resize="vertical" id="csv-preview" style="display: block;" class="preview-csv-textarea" rows="11"></vscode-text-area>
+								<textarea id="csv-preview" style="display: block;" class="preview-csv-textarea" rows="11"></textarea>
 							</div>
 						</td>
 					</tr>
@@ -721,20 +729,22 @@
 							</span>
 						</div>
 						<div class="control" style="padding-left: 0;">
-						<vscode-radio-group>
-							<vscode-radio id="numbers-style-en">
-								<span>en: 3.14</span>
+						<div class="ext-radio-group">
+							<div class="ext-radio">
+								<input type="radio" id="numbers-style-en" name="numbers-style" class="ext-checkbox">
+								<label class="ext-checkbox-label" for="numbers-style-en">en: 3.14</label>
 								<span class="tooltip is-tooltip-right is-tooltip-multiline" data-tooltip="Decimal separator: '.' Thousand separator: a single whitespace or ','">
 									<i class="far fa-question-circle"></i>
 								</span>
-							</vscode-radio>
-							<vscode-radio  id="numbers-style-non-en">
-								<span>non-en: 3,14</span>
+							</div>
+							<div class="ext-radio">
+								<input type="radio" id="numbers-style-non-en" name="numbers-style" class="ext-checkbox">
+								<label class="ext-checkbox-label" for="numbers-style-non-en">non-en: 3,14</label>
 								<span class="tooltip is-tooltip-right is-tooltip-multiline" data-tooltip="Decimal separator: ',' Thousand separator: a single whitespace or '.'">
 									<i class="far fa-question-circle"></i>
 								</span>
-							</vscode-radio>
-						</vscode-radio-group>
+							</div>
+						</div>
 						</div>
 					</div>
 

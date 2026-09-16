@@ -21,8 +21,71 @@
   };
   window.addEventListener('message', function (e) {
     var cmd = e && e.data && e.data.command;
-    if (cmd && !EDITOR_INBOUND[cmd]) e.stopImmediatePropagation();
+    if (!cmd || EDITOR_INBOUND[cmd]) return;
+    e.stopImmediatePropagation();
+    if (cmd === 'encodingInfo') applyEncodingInfo(e.data);
   }, true);
+
+  // --- Encoding read/write options -------------------------------------------------
+  // The editor markup has the two dropdowns but no logic for them (in VS Code the
+  // encoding is the editor host's business, and the edit-csv.net build has its own
+  // iconv-based implementation). Here the host owns the bytes, so the dropdowns are
+  // filled and driven from the host's `encodingInfo` message.
+
+  function t(text) {
+    var dict = window.__EDITOR_I18N__ &&
+      window.__EDITOR_I18N__[(new URLSearchParams(location.search).get('lang') || 'en').toLowerCase()];
+    return (dict && dict[text]) || text;
+  }
+
+  var encodingSelectsFilled = false;
+
+  function fillEncodingSelect(select, encodings) {
+    var group = null;
+    encodings.forEach(function (encoding) {
+      if (!group || group.label !== encoding.group) {
+        group = document.createElement('optgroup');
+        group.label = encoding.group;
+        select.appendChild(group);
+      }
+      var option = document.createElement('option');
+      option.value = encoding.value;
+      option.textContent = encoding.label;
+      group.appendChild(option);
+    });
+  }
+
+  function applyEncodingInfo(info) {
+    var readSelect = document.getElementById('read-option-encoding');
+    var writeSelect = document.getElementById('write-option-encoding');
+    if (!readSelect || !writeSelect) return;
+
+    if (!encodingSelectsFilled) {
+      encodingSelectsFilled = true;
+      fillEncodingSelect(readSelect, info.encodings);
+      fillEncodingSelect(writeSelect, info.encodings);
+      readSelect.addEventListener('change', function () {
+        window.parent.postMessage({ command: 'setReadEncoding', encoding: readSelect.value }, '*');
+      });
+      writeSelect.addEventListener('change', function () {
+        window.parent.postMessage({ command: 'setWriteEncoding', encoding: writeSelect.value }, '*');
+      });
+    }
+
+    // name the encoding actually in use, like edit-csv.net does: "Auto detect (windows-1251)"
+    var detected = info.detectedEncoding || '';
+    var autoRead = document.getElementById('read-option-encoding-auto');
+    if (autoRead) autoRead.textContent = t('Auto detect') + (detected ? ' (' + detected + ')' : '');
+    var autoWrite = document.getElementById('write-option-encoding-auto');
+    if (autoWrite) autoWrite.textContent = t('Same as read') + (detected ? ' (' + detected + ')' : '');
+
+    readSelect.value = info.readEncoding;
+    writeSelect.value = info.writeEncoding;
+
+    // a file handed over as text only (no bytes) cannot be decoded again
+    readSelect.disabled = !info.canReread;
+    readSelect.title = info.canReread ? '' : t('Reopen the file to change the read encoding');
+  }
 
   // "Open CSV" button in the editor header delegates to the host frame, where the
   // file picker + File System Access live. Called synchronously from the button's
