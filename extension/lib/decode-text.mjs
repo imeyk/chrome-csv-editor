@@ -85,11 +85,25 @@ export function scoreDecoded(text) {
  * Decode CSV bytes, guessing the encoding.
  * Returns the text, the encoding it was read with, and whether a BOM was stripped
  * (the caller needs both to write the file back the way it found it).
+ *
+ * `forcedEncoding` skips the guessing: it is what the user picked in the editor's
+ * "Encoding" read option, and it wins even when the guess would have been a good one.
+ * A BOM is stripped either way — it belongs to the file, not to the chosen encoding,
+ * and leaving it in would show up as a stray U+FEFF in the first cell.
  */
-export function decodeCsvBytes(input) {
+export function decodeCsvBytes(input, forcedEncoding = null) {
   const bytes = input instanceof Uint8Array ? input : new Uint8Array(input);
 
   const bom = detectBom(bytes);
+
+  if (forcedEncoding) {
+    return {
+      text: new TextDecoder(forcedEncoding).decode(bom ? bytes.subarray(bom.skip) : bytes),
+      encoding: forcedEncoding,
+      hadBom: bom !== null,
+    };
+  }
+
   if (bom) {
     return {
       text: new TextDecoder(bom.encoding).decode(bytes.subarray(bom.skip)),
@@ -134,6 +148,20 @@ function singleByteMap(encoding) {
 const singleByteMaps = new Map();
 
 /**
+ * A JS string already IS UTF-16, so writing it out is just splitting each code unit
+ * into two bytes. TextEncoder cannot do this (it only speaks utf-8).
+ */
+function encodeUtf16(text, littleEndian) {
+  const out = new Uint8Array(text.length * 2);
+  for (let i = 0; i < text.length; i++) {
+    const unit = text.charCodeAt(i);
+    out[i * 2] = littleEndian ? unit & 0xff : unit >> 8;
+    out[i * 2 + 1] = littleEndian ? unit >> 8 : unit & 0xff;
+  }
+  return out;
+}
+
+/**
  * Encode text back into the encoding it was read with, so saving does not silently
  * rewrite a windows-1251 file as UTF-8 and break every other tool that opens it.
  *
@@ -143,7 +171,11 @@ const singleByteMaps = new Map();
 export function encodeText(text, encoding) {
   const utf8 = () => ({ bytes: new TextEncoder().encode(text), encoding: 'utf-8' });
 
-  if (!encoding || encoding === 'utf-8' || encoding.startsWith('utf-16')) return utf8();
+  if (!encoding || encoding === 'utf-8') return utf8();
+
+  if (encoding === 'utf-16le' || encoding === 'utf-16be') {
+    return { bytes: encodeUtf16(text, encoding === 'utf-16le'), encoding };
+  }
 
   if (!singleByteMaps.has(encoding)) singleByteMaps.set(encoding, singleByteMap(encoding));
   const map = singleByteMaps.get(encoding);
@@ -158,10 +190,16 @@ export function encodeText(text, encoding) {
   return { bytes: out.subarray(0, i), encoding };
 }
 
-/** The bytes to write for `text`, re-adding a BOM if the file had one. */
+/**
+ * The bytes to write for `text`, re-adding a BOM if the file had one.
+ *
+ * UTF-16 always gets one: without it nothing can tell LE from BE, so a BOM-less
+ * utf-16 file reads back as garbage (or as the other byte order).
+ */
 export function encodeCsvText(text, { encoding, hadBom } = {}) {
   const encoded = encodeText(text, encoding);
-  if (!hadBom) return encoded.bytes;
+  const needsBom = hadBom || encoded.encoding.startsWith('utf-16');
+  if (!needsBom) return encoded.bytes;
   const bom = BOMS.find(b => b.encoding === encoded.encoding);
   if (!bom) return encoded.bytes;
   const out = new Uint8Array(bom.bytes.length + encoded.bytes.length);

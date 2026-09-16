@@ -1,6 +1,10 @@
 import { buildCsvUpdateMessages } from './lib/chunk.mjs';
 import { resolveSaveTarget, deriveDownloadName } from './lib/save.mjs';
 import { decodeCsvBytes, encodeCsvText } from './lib/decode-text.mjs';
+import { base64ToBytes } from './lib/base64.mjs';
+import {
+  AUTO, SUPPORTED_ENCODINGS, resolveReadEncoding, resolveWriteEncoding,
+} from './lib/encodings.mjs';
 
 const SLICE_SIZE = 1024 * 1024; // 1 MB, matches upstream
 const frame = document.getElementById('editor-frame');
@@ -12,9 +16,49 @@ const uiLang = (chrome.i18n.getUILanguage() || 'en').split('-')[0].toLowerCase()
 frame.src = '../csvEditorHtml/sandbox.html?lang=' + encodeURIComponent(uiLang);
 
 // `encoding`/`hadBom` are how the file was READ, so it can be written back the same way
-// instead of silently becoming utf-8 (see extension/lib/decode-text.mjs)
-let currentFile = { name: 'edited.csv', text: '', handle: null, encoding: 'utf-8', hadBom: false };
+// instead of silently becoming utf-8 (see extension/lib/decode-text.mjs). `bytes` is kept
+// around so the editor's "Encoding" read option can decode the same file again.
+let currentFile = {
+  name: 'edited.csv', bytes: null, text: '', handle: null, encoding: 'utf-8', hadBom: false,
+};
+// What the user picked in the editor's read/write Encoding dropdowns.
+// AUTO means: guess it on read, and write it back as it was read.
+let readEncodingChoice = AUTO;
+let writeEncodingChoice = AUTO;
 let editorReady = false;
+
+// Decode `bytes` with the current read choice and make them the open file.
+// Opening a file resets the read choice — a new file deserves a fresh guess.
+function openBytes(name, bytes, handle) {
+  readEncodingChoice = AUTO;
+  writeEncodingChoice = AUTO;
+  setBytes(name, bytes, handle);
+}
+
+function setBytes(name, bytes, handle) {
+  const decoded = decodeCsvBytes(bytes, resolveReadEncoding(readEncodingChoice));
+  currentFile = {
+    name, bytes, handle,
+    text: decoded.text, encoding: decoded.encoding, hadBom: decoded.hadBom,
+  };
+  markLoaded();
+  sendCurrentFile();
+}
+
+// Tell the editor which encodings to offer and what the current state is, so its
+// dropdowns can show e.g. "Auto detect (windows-1251)".
+function sendEncodingInfo() {
+  if (!editorReady) return;
+  frame.contentWindow.postMessage({
+    command: 'encodingInfo',
+    encodings: SUPPORTED_ENCODINGS,
+    readEncoding: readEncodingChoice,
+    writeEncoding: writeEncodingChoice,
+    detectedEncoding: currentFile.encoding,
+    // without the original bytes there is nothing to decode again
+    canReread: currentFile.bytes !== null,
+  }, '*');
+}
 
 async function loadPendingPayload() {
   const params = new URLSearchParams(location.search);
@@ -24,13 +68,8 @@ async function loadPendingPayload() {
     const stored = await chrome.storage.session.get(key);
     const payload = stored[key];
     if (payload) {
-      currentFile = {
-        name: payload.name, text: payload.text, handle: null,
-        encoding: payload.encoding || 'utf-8', hadBom: payload.hadBom || false,
-      };
       await chrome.storage.session.remove(key);
-      markLoaded();
-      sendCurrentFile();
+      openBytes(payload.name, base64ToBytes(payload.bytesBase64), null);
     }
   }
   if (src && src.startsWith('fileurl:')) {
@@ -40,14 +79,7 @@ async function loadPendingPayload() {
       // extensions may use to read file:// when "Allow access to file URLs" is on.
       // Read BYTES: a csv is not necessarily utf-8 (windows-1251 is very common).
       const bytes = await readBytesViaXhr(fileUrl);
-      const decoded = decodeCsvBytes(bytes);
-      currentFile = {
-        name: fileUrl.split('/').pop() || 'edited.csv',
-        text: decoded.text, handle: null,
-        encoding: decoded.encoding, hadBom: decoded.hadBom,
-      };
-      markLoaded();
-      sendCurrentFile();
+      openBytes(fileUrl.split('/').pop() || 'edited.csv', new Uint8Array(bytes), null);
     } catch (err) {
       // Most likely cause: "Allow access to file URLs" is disabled, or the file was removed.
       console.warn('[host] failed to load file:// URL', err);
@@ -64,6 +96,7 @@ function sendCurrentFile() {
   for (const msg of buildCsvUpdateMessages(currentFile.text, SLICE_SIZE)) {
     frame.contentWindow.postMessage(msg, '*');
   }
+  sendEncodingInfo();
 }
 
 // Read a URL as BYTES via XHR. Needed for file:// (fetch rejects the file scheme);
@@ -99,13 +132,7 @@ async function loadFromFile(file) {
 }
 
 async function loadFile(file, handle) {
-  const decoded = decodeCsvBytes(await file.arrayBuffer());
-  currentFile = {
-    name: file.name, text: decoded.text, handle,
-    encoding: decoded.encoding, hadBom: decoded.hadBom,
-  };
-  markLoaded();
-  sendCurrentFile();
+  openBytes(file.name, new Uint8Array(await file.arrayBuffer()), handle);
 }
 
 // Open a CSV via the File System Access picker (gives a handle for in-place save),
@@ -162,9 +189,11 @@ function downloadBytes(name, bytes) {
 }
 
 async function saveCsv(text) {
-  // write it back in the encoding it was read with, so a windows-1251 file stays
-  // windows-1251 for whatever else opens it
-  const bytes = encodeCsvText(text, currentFile);
+  // default ("Same as read"): write it back in the encoding it was read with, so a
+  // windows-1251 file stays windows-1251 for whatever else opens it. The write Encoding
+  // option overrides that.
+  const encoding = resolveWriteEncoding(writeEncodingChoice, currentFile.encoding);
+  const bytes = encodeCsvText(text, { encoding, hadBom: currentFile.hadBom });
   if (resolveSaveTarget(currentFile.handle) === 'fsa') {
     try { await writeViaHandle(currentFile.handle, bytes); return; }
     catch (err) { console.warn('[host] FSA write failed, downloading instead', err); }
@@ -178,6 +207,13 @@ window.addEventListener('message', (e) => {
   if (msg.command === 'ready') {
     editorReady = true;
     sendCurrentFile();
+  } else if (msg.command === 'setReadEncoding') {
+    // re-decode the SAME bytes; the table is replaced, exactly like re-opening the file
+    readEncodingChoice = msg.encoding;
+    if (currentFile.bytes) setBytes(currentFile.name, currentFile.bytes, currentFile.handle);
+    else sendEncodingInfo();
+  } else if (msg.command === 'setWriteEncoding') {
+    writeEncodingChoice = msg.encoding;
   } else if (msg.command === 'apply') {
     saveCsv(msg.csvContent);
   } else if (msg.command === 'openFilePicker') {
@@ -188,15 +224,10 @@ window.addEventListener('message', (e) => {
     // a file was dropped onto the editor (read inside the sandbox). No FS handle,
     // so saving uses the download fallback. The sandbox hands over raw bytes so the
     // encoding is guessed here, in one place.
-    const decoded = msg.buffer
-      ? decodeCsvBytes(msg.buffer)
-      : { text: msg.text || '', encoding: 'utf-8', hadBom: false };
-    currentFile = {
-      name: msg.name || 'edited.csv', text: decoded.text, handle: null,
-      encoding: decoded.encoding, hadBom: decoded.hadBom,
-    };
-    markLoaded();
-    sendCurrentFile();
+    const bytes = msg.buffer
+      ? new Uint8Array(msg.buffer)
+      : new TextEncoder().encode(msg.text || '');
+    openBytes(msg.name || 'edited.csv', bytes, null);
   }
 });
 

@@ -110,10 +110,22 @@ test('encodeText: falls back to utf-8 when a character does not fit', () => {
   assert.equal(new TextDecoder('utf-8').decode(bytes), 'курорт 🌴\n');
 });
 
-test('encodeText: utf-8 and utf-16 sources are written as utf-8', () => {
+test('encodeText: utf-8 and an unknown encoding are written as utf-8', () => {
   assert.equal(encodeText('a', 'utf-8').encoding, 'utf-8');
-  assert.equal(encodeText('a', 'utf-16le').encoding, 'utf-8');
   assert.equal(encodeText('a', undefined).encoding, 'utf-8');
+});
+
+test('encodeText: utf-16 is written as utf-16, not downgraded to utf-8', () => {
+  const text = 'город,a\n';
+  const le = encodeText(text, 'utf-16le');
+  assert.equal(le.encoding, 'utf-16le');
+  assert.equal(new TextDecoder('utf-16le').decode(le.bytes), text);
+
+  const be = encodeText(text, 'utf-16be');
+  assert.equal(be.encoding, 'utf-16be');
+  assert.equal(new TextDecoder('utf-16be').decode(be.bytes), text);
+  // same text, mirrored bytes
+  assert.deepEqual([...be.bytes.slice(0, 2)], [...le.bytes.slice(0, 2)].reverse());
 });
 
 test('encodeCsvText: re-adds the BOM the file came with', () => {
@@ -135,4 +147,56 @@ test('decode -> edit -> encode keeps a windows-1251 file windows-1251', () => {
   assert.equal(new TextDecoder('windows-1251').decode(written), 'город;курорт\nМосква;Анапа\n');
   // and reading it back again gives the same text
   assert.equal(decodeCsvBytes(written).text, edited);
+});
+
+/* --- forced read encoding: the editor's "Encoding" read option (issue #17) --- */
+
+test('decodeCsvBytes: a forced encoding wins over the guess', () => {
+  // these bytes really are koi8-r, and the guesser gets that right...
+  const bytes = bytesIn('koi8-r', 'город;курорт\n');
+  assert.equal(decodeCsvBytes(bytes).encoding, 'koi8-r');
+
+  // ...but the user gets the last word, even when the result is nonsense
+  const forced = decodeCsvBytes(bytes, 'windows-1251');
+  assert.equal(forced.encoding, 'windows-1251');
+  assert.equal(forced.text, new TextDecoder('windows-1251').decode(bytes));
+  assert.notEqual(forced.text, 'город;курорт\n');
+});
+
+test('decodeCsvBytes: a forced encoding rescues what the guesser cannot reach', () => {
+  // the guesser only ever picks between cyrillic and windows-1252, so greek text
+  // (runs of high bytes -> cyrillic candidates) always comes out wrong
+  const source = 'πόλη;τιμή\nΑθήνα;100\n';
+  const bytes = bytesIn('iso-8859-7', source);
+  assert.notEqual(decodeCsvBytes(bytes).text, source);              // guessed wrong
+  assert.equal(decodeCsvBytes(bytes, 'iso-8859-7').text, source);   // user fixes it
+});
+
+test('decodeCsvBytes: a forced encoding still strips the BOM', () => {
+  const bytes = new Uint8Array([0xef, 0xbb, 0xbf, ...bytesIn('windows-1252', 'id,a\n')]);
+  const r = decodeCsvBytes(bytes, 'windows-1252');
+  assert.equal(r.text, 'id,a\n');    // no leading U+FEFF and no "ï»¿"
+  assert.equal(r.hadBom, true);
+});
+
+test('decodeCsvBytes: forcing utf-8 on a utf-8 file is a no-op', () => {
+  const source = 'город,курорт\n';
+  const r = decodeCsvBytes(utf8(source), 'utf-8');
+  assert.equal(r.text, source);
+  assert.equal(r.encoding, 'utf-8');
+});
+
+test('encodeCsvText: utf-16 always gets a BOM, even for a file that had none', () => {
+  const bytes = encodeCsvText('id,a\n', { encoding: 'utf-16le', hadBom: false });
+  assert.deepEqual([...bytes.slice(0, 2)], [0xff, 0xfe]);
+  // and it reads back as the same text, BOM included in the round trip
+  assert.equal(decodeCsvBytes(bytes).text, 'id,a\n');
+  assert.equal(decodeCsvBytes(bytes).encoding, 'utf-16le');
+});
+
+test('re-reading with another encoding and saving keeps that encoding', () => {
+  const original = bytesIn('ibm866', 'имя;цена\nстол;100\n');
+  const reread = decodeCsvBytes(original, 'ibm866');
+  const written = encodeCsvText(reread.text, reread);
+  assert.deepEqual([...written], [...original]);
 });
