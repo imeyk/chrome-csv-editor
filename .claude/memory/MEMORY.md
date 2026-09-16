@@ -1,3 +1,4 @@
 - [Web Store version bump](web-store-version-bump.md) — release rules live in the repo's CLAUDE.md; `npm run bump` bumps and commits, and pack:chrome refuses an uncommitted version
 - [The webview UI toolkit is not loaded](webview-ui-toolkit-not-loaded.md) — every `<vscode-*>` tag in sandbox.html is inert, so use plain html controls and the tokens in extension-controls.css
 - [Encoding options are host driven](encoding-options-are-host-driven.md) — the Encoding dropdowns are filled over postMessage by editor-host.mjs, and may only list encodings the extension can also write
+- [The Handsontable fork has no row hiding plugins](handsontable-fork-has-no-row-hiding-plugins.md) — filters/hiddenRows/trimRows are absent from the bundle but declared in its .d.ts, so hiding is hand-rolled via rowHeights and a derived index array
