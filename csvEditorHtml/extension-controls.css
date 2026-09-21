@@ -146,6 +146,11 @@ vscode-button {
 	align-items: center;
 	justify-content: center;
 	box-sizing: border-box;
+	/* The toolkit's own button lays its `start` / `end` slots out with a gap; without it
+	   the icon sits flush against the label ("Open CSV", "Tools", ... — issue #22).
+	   A gap needs two children, so the icon-only buttons (one `<span>` or one `<i>`,
+	   composed glyphs included) are left exactly as they were. */
+	gap: calc(var(--design-unit) * 2px);
 	padding: calc(var(--design-unit) * 1px) 11px;
 	border: 1px solid transparent;
 	border-radius: calc(var(--corner-radius) * 1px);
@@ -182,7 +187,9 @@ vscode-button[appearance="icon"]:hover {
 }
 
 /* the tooltip that sits in the button's `slot="end"` must not inherit the button colour
-   twice (the icon is a font glyph, so it just follows `color`) */
+   twice (the icon is a font glyph, so it just follows `color`), and its `mar-left-half`
+   would stack on top of the button's own gap — inside a button the gap is the spacing */
 vscode-button .tooltip {
 	color: inherit;
+	margin-left: 0;
 }

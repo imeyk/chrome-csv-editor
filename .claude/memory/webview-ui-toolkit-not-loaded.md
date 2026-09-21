@@ -15,6 +15,12 @@ Consequences, and the rule that follows:
   inherited from upstream stays an **unknown inline element**: no widget, `onchange` never
   fires, `.checked` is `undefined`. This is what issue #17 was — the controls were in the
   DOM but invisible and dead.
+* `slot="start"` / `slot="end"` on the children of a `<vscode-button>` are **inert too**:
+  there is no shadow root, so the attributes name nothing and the spans are laid out as
+  ordinary flow content. Upstream's button put the gap between the icon and the label in
+  its own shadow DOM, which is why every icon sat flush against its text until #22 gave
+  `vscode-button` an explicit `gap` in `extension-controls.css`. Anything the toolkit's
+  shadow DOM used to contribute has to be restated there.
 * The toolkit also defines the design tokens `main.css` styles from (`--input-background`,
   `--dropdown-border`, `--corner-radius`, `--design-unit`, `--input-height`, `--border-width`).
   Without it they resolve to nothing, so those rules silently do nothing.
