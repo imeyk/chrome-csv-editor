@@ -35,6 +35,12 @@ declare var csvRowFilter: {
 	cellMatchesColumnFilter: (value: any, filter: ColumnFilter) => boolean
 	collectColumnValues: (columnValues: any[], limit?: number) => { values: string[], truncated: boolean }
 	countActiveFilters: (filters: { [colIndex: number]: ColumnFilter } | null) => number
+	copiedRowIndices: (ranges: Array<{ startRow: number, endRow: number }> | null) => number[]
+	keepVisibleCopiedRows: (
+		data: any[],
+		ranges: Array<{ startRow: number, endRow: number }> | null,
+		isRowHidden: (visualRowIndex: number) => boolean
+	) => number
 }
 declare var initialContent: string
 declare var initialConfig: EditCsvConfig | undefined

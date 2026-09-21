@@ -1,6 +1,7 @@
 // Row filtering logic, kept free of Handsontable and of the DOM so it can be unit tested
 // in node (csvEditorHtml/row-filter.test.mjs) and reused by whoever needs the visible rows:
-// the grid, the row count indicator and "Save filtered CSV" all ask the same question here.
+// the grid, the row count indicator, "Save filtered CSV" and copying to the clipboard all ask
+// the same question here.
 //
 // A filter of one column is `{ mode, text, values }`:
 //   mode    'exact' | 'contains'  - how `text` is compared (anything else means 'contains')
@@ -111,12 +112,69 @@
     return count;
   }
 
+  /**
+   * The rows a copy covers, in the order handsontable puts them into the copied block.
+   * It walks every selected range from its first to its last row and skips the rows it
+   * already has, so overlapping ctrl+click selections copy a row once - exactly what
+   * CopyPaste.getRangedData() does, and what makes data[i] the row returned here at i.
+   *
+   * @param {Array<{startRow: number, endRow: number}>} ranges the copied ranges (visual rows)
+   * @returns {number[]} the visual row indices, in copy order
+   */
+  function copiedRowIndices(ranges) {
+    var rowIndices = [];
+    if (!ranges) return rowIndices;
+
+    for (var i = 0; i < ranges.length; i++) {
+      var range = ranges[i];
+      if (!range) continue;
+
+      for (var rowIndex = range.startRow; rowIndex <= range.endRow; rowIndex++) {
+        if (rowIndices.indexOf(rowIndex) !== -1) continue;
+        rowIndices.push(rowIndex);
+      }
+    }
+
+    return rowIndices;
+  }
+
+  /**
+   * Removes the rows that are not displayed from a block that is about to be copied.
+   * A selection can span rows that a filter collapsed away (they are hidden, not removed),
+   * and those are not on screen, so they must not be in the clipboard either.
+   *
+   * The block is edited IN PLACE because handsontable stringifies this very array right
+   * after the hook returns - a new array would be ignored.
+   *
+   * @param {any[][]} data the copied rows, one array per row
+   * @param {Array<{startRow: number, endRow: number}>} ranges the ranges `data` was built from
+   * @param {(visualRowIndex: number) => boolean} isRowHidden
+   * @returns {number} how many rows were dropped
+   */
+  function keepVisibleCopiedRows(data, ranges, isRowHidden) {
+    if (!data || !ranges || typeof isRowHidden !== 'function') return 0;
+
+    var rowIndices = copiedRowIndices(ranges);
+    var removed = 0;
+
+    //backwards, so that splicing does not move the rows that are still to be looked at
+    for (var i = Math.min(rowIndices.length, data.length) - 1; i >= 0; i--) {
+      if (!isRowHidden(rowIndices[i])) continue;
+      data.splice(i, 1);
+      removed++;
+    }
+
+    return removed;
+  }
+
   var api = {
     DEFAULT_UNIQUE_VALUES_LIMIT: DEFAULT_UNIQUE_VALUES_LIMIT,
     isColumnFilterEmpty: isColumnFilterEmpty,
     cellMatchesColumnFilter: cellMatchesColumnFilter,
     collectColumnValues: collectColumnValues,
     countActiveFilters: countActiveFilters,
+    copiedRowIndices: copiedRowIndices,
+    keepVisibleCopiedRows: keepVisibleCopiedRows,
   };
 
   root.csvRowFilter = api;
