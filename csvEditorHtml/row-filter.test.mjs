@@ -8,6 +8,8 @@ const {
   cellMatchesColumnFilter,
   collectColumnValues,
   countActiveFilters,
+  copiedRowIndices,
+  keepVisibleCopiedRows,
 } = require('./row-filter.js');
 
 const contains = (text) => ({ mode: 'contains', text: text, values: null });
@@ -160,4 +162,92 @@ test('countActiveFilters: counts only the columns that actually filter', () => {
   assert.equal(countActiveFilters(null), 0);
   assert.equal(countActiveFilters({ 0: contains(''), 1: exact('red') }), 1);
   assert.equal(countActiveFilters({ 0: contains('a'), 1: picked([]) }), 2);
+});
+
+//--- copiedRowIndices
+
+const range = (startRow, endRow) => ({ startRow: startRow, startCol: 0, endRow: endRow, endCol: 1 });
+
+test('copiedRowIndices: one range is walked from its first to its last row', () => {
+  assert.deepEqual(copiedRowIndices([range(1, 4)]), [1, 2, 3, 4]);
+});
+
+test('copiedRowIndices: a single cell selection is one row', () => {
+  assert.deepEqual(copiedRowIndices([range(2, 2)]), [2]);
+});
+
+test('copiedRowIndices: several ranges keep their order and are not repeated', () => {
+  // ctrl+click selections: handsontable copies every row once, in the order the ranges came in
+  assert.deepEqual(copiedRowIndices([range(0, 1), range(4, 5)]), [0, 1, 4, 5]);
+  assert.deepEqual(copiedRowIndices([range(0, 2), range(1, 3)]), [0, 1, 2, 3]);
+});
+
+test('copiedRowIndices: no ranges means no rows', () => {
+  assert.deepEqual(copiedRowIndices([]), []);
+  assert.deepEqual(copiedRowIndices(null), []);
+});
+
+//--- keepVisibleCopiedRows
+
+const hiddenSet = (...rows) => (visualRowIndex) => rows.indexOf(visualRowIndex) !== -1;
+
+test('keepVisibleCopiedRows: rows hidden by a filter do not reach the clipboard', () => {
+  const data = [['r0'], ['r1'], ['r2'], ['r3']];
+  const removed = keepVisibleCopiedRows(data, [range(0, 3)], hiddenSet(1, 2));
+
+  assert.equal(removed, 2);
+  assert.deepEqual(data, [['r0'], ['r3']]);
+});
+
+test('keepVisibleCopiedRows: the visible rows keep their display order', () => {
+  const data = [['r0'], ['r1'], ['r2'], ['r3'], ['r4']];
+  keepVisibleCopiedRows(data, [range(0, 4)], hiddenSet(0, 3));
+
+  assert.deepEqual(data, [['r1'], ['r2'], ['r4']]);
+});
+
+test('keepVisibleCopiedRows: without hidden rows the block is copied as it is', () => {
+  const data = [['r0'], ['r1'], ['r2']];
+  const removed = keepVisibleCopiedRows(data, [range(0, 2)], () => false);
+
+  assert.equal(removed, 0);
+  assert.deepEqual(data, [['r0'], ['r1'], ['r2']]);
+});
+
+test('keepVisibleCopiedRows: the array is edited in place, handsontable stringifies that one', () => {
+  const data = [['r0'], ['r1']];
+  const same = data;
+  keepVisibleCopiedRows(data, [range(0, 1)], hiddenSet(0));
+
+  assert.equal(same, data);
+  assert.deepEqual(data, [['r1']]);
+});
+
+test('keepVisibleCopiedRows: the rows are matched by their range, not by their position', () => {
+  // a selection that does not start at row 0: data[0] is row 5
+  const data = [['r5'], ['r6'], ['r7']];
+  keepVisibleCopiedRows(data, [range(5, 7)], hiddenSet(0, 6));
+
+  assert.deepEqual(data, [['r5'], ['r7']]);
+});
+
+test('keepVisibleCopiedRows: several ranges are mapped to the rows they copied', () => {
+  const data = [['r0'], ['r1'], ['r4'], ['r5']];
+  keepVisibleCopiedRows(data, [range(0, 1), range(4, 5)], hiddenSet(1, 4));
+
+  assert.deepEqual(data, [['r0'], ['r5']]);
+});
+
+test('keepVisibleCopiedRows: a selection of only hidden rows copies nothing', () => {
+  const data = [['r0'], ['r1']];
+  const removed = keepVisibleCopiedRows(data, [range(0, 1)], () => true);
+
+  assert.equal(removed, 2);
+  assert.deepEqual(data, []);
+});
+
+test('keepVisibleCopiedRows: missing arguments are tolerated', () => {
+  assert.equal(keepVisibleCopiedRows(null, [range(0, 1)], () => true), 0);
+  assert.equal(keepVisibleCopiedRows([['r0']], null, () => true), 0);
+  assert.equal(keepVisibleCopiedRows([['r0']], [range(0, 0)], null), 0);
 });

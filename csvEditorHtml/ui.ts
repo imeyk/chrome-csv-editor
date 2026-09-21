@@ -1291,6 +1291,7 @@ function displayData(this: any, csvParseResult: ExtendedCsvParseResult | null, c
 		beforeCopy: function (data, coords) {
 			//we could change data to 1 element array containing the finished data? log to console then step until we get to SheetClip.stringify
 			// console.log('data');
+			_removeHiddenRowsFromCopiedData(data, coords)
 		},
 		beforeUndo: function (_action: EditHeaderCellAction | RemoveColumnAction | InsertColumnAction | any) {
 
@@ -2965,7 +2966,8 @@ function getAreCommentsDisplayed(): boolean {
 //
 // Rows are HIDDEN (see _updateHiddenPhysicalRowIndices), never removed, so the data stays
 // complete and hot.getData() - and with it normal saving - still sees the whole file.
-// Only "Save filtered CSV" (postApplyFilteredContent) restricts itself to the visible rows.
+// Only "Save filtered CSV" (postApplyFilteredContent) and copying to the clipboard
+// (_removeHiddenRowsFromCopiedData) restrict themselves to the visible rows.
 //
 // Filters are view state of the current table: opening another file or re-parsing the data
 // drops them (see displayData), and they are not re-evaluated while cells are edited - the
@@ -3158,6 +3160,29 @@ function getVisibleDataRowIndices(): number[] {
 	}
 
 	return visualRowIndices
+}
+
+/**
+ * drops the rows that are not displayed from a block that is about to be copied, IN PLACE
+ * (handsontable stringifies the very array it passed in, see beforeCopy).
+ *
+ * A selection keeps spanning the rows a filter collapsed away - they are hidden, not removed -
+ * so without this ctrl+c would put rows into the clipboard that are not on screen. The hidden
+ * rows are read from the same set the renderer uses, so the clipboard can never disagree with
+ * what the table shows (that also covers the rows hidden with the comments).
+ *
+ * @param data the copied rows, one array per row
+ * @param coords the selected ranges the rows were taken from
+ */
+function _removeHiddenRowsFromCopiedData(data: any[], coords: any[]) {
+
+	if (!hot) return
+	//nothing is hidden: the common case, and then every selected row is a displayed row
+	if (hiddenPhysicalRowIndicesSorted.length === 0) return
+
+	csvRowFilter.keepVisibleCopiedRows(data, coords, (visualRowIndex) => {
+		return hiddenPhysicalRowIndicesLookup[hot!.toPhysicalRow(visualRowIndex)] === true
+	})
 }
 
 /**
