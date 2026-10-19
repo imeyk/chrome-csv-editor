@@ -66,6 +66,17 @@ declare var csvRowFilter: {
 		isRowHidden: (visualRowIndex: number) => boolean
 	) => number
 }
+//see csvEditorHtml/url-links.js (loaded as a classic script before out/main.js)
+declare var csvUrlLinks: {
+	KNOWN_TLDS: string[]
+	FILE_EXTENSION_COLLISIONS: string[]
+	mayContainUrl: (text: string | null | undefined) => boolean
+	findUrls: (text: string | null | undefined) => UrlInStringCoords[] | null
+	toHref: (url: string) => string
+}
+//see csvEditorHtml/host-bridge.js - only defined in the chrome extension build, where the
+//editor runs in a SANDBOXED page and cannot open a tab itself (see openUrlInNewTab)
+declare var csvHostOpenUrl: ((url: string) => void) | undefined
 declare var initialContent: string
 declare var initialConfig: EditCsvConfig | undefined
 // declare var regression: RegressionLib
@@ -236,6 +247,15 @@ let lastHandsonMoveWas: 'tab' | 'enter' | null = null
 let highlightCsvComments: boolean = true
 
 /**
+ * true: urls in cells are rendered as clickable links, false: as plain text
+ *
+ * like {@link highlightCsvComments} this defaults to true and is only overwritten from
+ * initialConfig - which the chrome extension does not have (sandbox.html sets it to undefined),
+ * so reading the flag off initialConfig there left every url as plain text
+ */
+let convertUrlsToLinkTags: boolean = true
+
+/**
  * true: new columns will get true as quote information (also for added columns via expanding),
  * false: new columns will get false as quote information
  */
@@ -341,10 +361,19 @@ let hasFinalNewLine: boolean
 
 // 1 = true, 0 = false (or null)
 const linkIsOpenableAttribute = 'data-link-is-openable'
-const isOpenUrlKeyDownClass = `is-open-url-key-down`
-//needed because when the cursor is in a link we don't want to highlight the link yet
-//but when the user then presses the modifier key we want to highlight the link (without any mouse event)
-let hoveredATag: HTMLAnchorElement | null = null
+//there used to be an `is-open-url-key-down` class here, plus the hovered link it was applied
+//to: a link was only openable while the modifier key was held, so hovering one had to wait for
+//a keydown before it could look clickable. A plain click opens the link now, so plain hover is
+//the whole state (see the .link-hovered rules in light.css / dark.css)
+
+/**
+ * a plain click on a link opens it, but a double click on the cell must still start editing -
+ * and a double click BEGINS with two single clicks. So a plain click only schedules the open
+ * and the `dblclick` that follows cancels it again (see {@link openUrlInNewTabAfterDoubleClickWindow}).
+ */
+let pendingUrlOpenTimeoutId: number | null = null
+/** slightly above the ~250ms most browsers use as the double click interval */
+const openUrlAfterDoubleClickDelayInMs = 260
 
 //not a const because we need to change it in the browser
 //only mac is special because it uses alt (vs code uses cmd but cmd will select individual cells in handsontable)
@@ -489,11 +518,8 @@ setupClipboardImport()
 
 /* main */
 
-//from https://www.oreilly.com/library/view/regular-expressions-cookbook/9781449327453/ch08s02.html
-//don't forget to set `urlRegex.lastIndex = 0` before using it
-// const urlRegex = /(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|$!:,.;]*[A-Z0-9+&@#\/%=~_|$]/gmi
-//ftp and file not working anyway
-const urlRegex = /(https?):\/\/[-A-Z0-9+&@#\/%?=~_|$!:,.;]*[A-Z0-9+&@#\/%=~_|$]/gmi
+//url detection moved to csvEditorHtml/url-links.js (`csvUrlLinks`), which also recognizes urls
+//without a protocol and is unit tested in node - see containAndExtractUrl in util.ts
 
 //used to restore cell selection and scroll pos (after data reset)
 let previousSelectedCell: HotCellPos | null = null
@@ -609,16 +635,11 @@ function setupGlobalShortcutsInVs() {
 		pretendRemoveRowContextMenuActionClicked()
 	})
 
-	document.documentElement.addEventListener('keydown', (e) => {
-		if (hoveredATag && isOpenLinkModifierPressed(e)) {
-			hoveredATag.classList.add(isOpenUrlKeyDownClass)
-		}
-	})
-	document.documentElement.addEventListener('keyup', (e) => {
-		if (hoveredATag) {
-			hoveredATag.classList.remove(isOpenUrlKeyDownClass)
-		}
-	})
+	//the second half of a double click: the user wants to edit the cell, not to open the link
+	//the first click scheduled - capture phase so this runs even if handsontable stops the event
+	document.documentElement.addEventListener('dblclick', (e) => {
+		cancelPendingUrlOpen()
+	}, true)
 
 	function handleWheel(e: WheelEvent) {
 

@@ -95,6 +95,20 @@
     window.parent.postMessage({ command: 'openFilePicker' }, '*');
   };
 
+  // Clicking a url in a cell. This page is SANDBOXED (see the `sandbox` section of
+  // manifest.json), and the sandbox is inherited by anything it opens: a tab opened from here
+  // would be a null origin page that cannot browse. So the url goes to the host frame, a normal
+  // extension page, which opens the tab. util.ts calls this through `csvHostOpenUrl`, and falls
+  // back to window.open where this file is not loaded (vs code webview, editor opened top level).
+  window.csvHostOpenUrl = function (url) {
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({ command: 'openUrl', url: url }, '*');
+      return;
+    }
+    // editor opened top level: no host frame to delegate to
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
   // --- importing a csv that is not a file (issue #26) ------------------------------
 
   function isInsideHostFrame() {

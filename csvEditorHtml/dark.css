@@ -80,13 +80,15 @@ body.vscode-dark {
 
 /* handson table styles */
 
+/* a plain click opens the link, so it is a pointer target at all times - it used to be
+   `cursor: default` because opening needed the ctrl/cmd modifier */
 .vscode-dark .ht_master a[data-link-is-openable="1"] {
-	cursor: default;
+	cursor: pointer;
 	text-decoration: underline;
 	color: var(--text-color, #d0d0d0);
 }
 
-.vscode-dark .ht_master a[data-link-is-openable="1"].link-hovered.is-open-url-key-down {
+.vscode-dark .ht_master a[data-link-is-openable="1"].link-hovered {
 	color: var(--vscode-editorLink-activeForeground, #4e94ce); /* default for browser */
 	cursor: pointer;
 }
