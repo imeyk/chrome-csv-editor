@@ -3663,15 +3663,67 @@ function setupDropdownHandlers() {
 	})
 
 	document.addEventListener(`mouseup`, (e) => {
-
-		let wrappers = document.querySelectorAll(`.btn-with-menu-wrapper`)
-		wrappers.forEach(wrapper => {
-
-			//close all menus (in extra function because we might also need to change icons)
-			setToolMenuIsOpen(false)
-		})
-
+		//close all menus (in extra function because we might also need to change icons)
+		closeAllDropdownMenus()
 	})
+}
+
+/**
+ * the chevron of a dropdown button, looked up inside its own wrapper
+ *
+ * not by id: there is more than one dropdown now ("Open CSV" and "Tools", see issue #26)
+ * and the vs code / edit-csv.net pages carry their own copies of this markup
+ */
+function getDropdownChevron(wrapper: Element): HTMLElement | null {
+	return wrapper.querySelector(`.btn-with-menu .fa-chevron-down, .btn-with-menu .fa-chevron-up`)
+}
+
+/**
+ * opens or closes one dropdown menu and flips its chevron
+ */
+function setDropdownMenuIsOpen(wrapper: Element | null, setOpen: boolean) {
+
+	if (!wrapper) return
+
+	const chevron = getDropdownChevron(wrapper)
+
+	if (setOpen) {
+		wrapper.classList.add(`is-menu-open`)
+	} else {
+		wrapper.classList.remove(`is-menu-open`)
+	}
+
+	if (chevron) {
+		chevron.classList.toggle(`fa-chevron-up`, setOpen)
+		chevron.classList.toggle(`fa-chevron-down`, !setOpen)
+	}
+}
+
+/**
+ * closes every dropdown menu, optionally keeping one
+ *
+ * a dropdown button stops the `mouseup` that would close the menus (see
+ * {@link setupDropdownHandlers}), so opening one has to close the others itself
+ */
+function closeAllDropdownMenus(exceptWrapper?: Element | null) {
+
+	document.querySelectorAll(`.btn-with-menu-wrapper`).forEach(wrapper => {
+		if (exceptWrapper && wrapper === exceptWrapper) return
+		setDropdownMenuIsOpen(wrapper, false)
+	})
+}
+
+/**
+ * toggles one dropdown menu, closing whichever other one was open
+ */
+function toggleDropdownMenu(wrapper: Element | null) {
+
+	if (!wrapper) return
+
+	const isMenuOpen = wrapper.classList.contains(`is-menu-open`)
+
+	closeAllDropdownMenus(wrapper)
+	setDropdownMenuIsOpen(wrapper, !isMenuOpen)
 }
 
 function getHandsontableOverlayScrollLeft(): HTMLDivElement | null {
@@ -4087,24 +4139,366 @@ function _updateHandsontableSettings(settings: Handsontable.DefaultSettings, ini
 }
 
 function toggleToolMenu() {
-
-	const isMenuOpen = toolMenuWrapper.classList.contains(`is-menu-open`)
-
-	setToolMenuIsOpen(!isMenuOpen)
+	toggleDropdownMenu(toolMenuWrapper)
 }
 
 function setToolMenuIsOpen(setOpen: boolean) {
+	setDropdownMenuIsOpen(toolMenuWrapper, setOpen)
+}
 
-	if (setOpen) {
-		toolMenuWrapper.classList.add(`is-menu-open`)
-		toolsMenuBtnIcon.classList.remove(`fa-chevron-down`)
-		toolsMenuBtnIcon.classList.add(`fa-chevron-up`)
-	} else {
-		toolMenuWrapper.classList.remove(`is-menu-open`)
-		toolsMenuBtnIcon.classList.add(`fa-chevron-down`)
-		toolsMenuBtnIcon.classList.remove(`fa-chevron-up`)
+/**
+ * the "Open CSV" dropdown (chrome extension only, see issue #26)
+ */
+function toggleOpenCsvMenu() {
+	toggleDropdownMenu(openCsvMenuWrapper)
+}
+
+/* --- importing a csv, from a file or from the clipboard (chrome extension, issue #26) ---
+ *
+ * Both entry points ("Open CSV" > "Open CSV file" / "Paste CSV from clipboard", and ctrl+v
+ * on the table) run through the same three steps: is the text importable, does the table
+ * already hold data, and — if it does — what does the user decide. Only the last step
+ * differs: a paste can also go into the selected cells, opening a file cannot.
+ */
+
+/** what the import dialog is currently asking about, null while it is closed */
+let pendingCsvImport:
+	| { kind: 'file' }
+	| { kind: 'text', text: string, canPasteIntoCells: boolean }
+	| null = null
+
+const importCsvPreviewMaxRows = 6
+const importCsvPreviewMaxCols = 8
+
+/**
+ * true when the table holds nothing the user could lose
+ *
+ * the header row is not part of {@link Handsontable.getData}, so it is checked separately —
+ * else a table whose only content is its header would be replaced without asking
+ */
+function isTableEmpty(): boolean {
+
+	if (!hot) return true
+
+	if (!isTableDataEmpty(hot.getData() as any[][])) return false
+	if (headerRowWithIndex && !isTableDataEmpty([headerRowWithIndex.row])) return false
+
+	return true
+}
+
+/**
+ * parses the text the way {@link parseCsv} would (same delimiter detection, same quoting),
+ * but only to answer "can this be imported, and what does it look like"
+ *
+ * this never touches the table: a failed import must leave the data exactly as it was
+ */
+function parseCsvForImport(text: string): string[][] {
+
+	let effectiveDelimiter = defaultCsvReadOptions.delimiter
+
+	if (effectiveDelimiter === '') {
+		const detected = detectCsvDelimiter(text, {
+			candidates: defaultCsvReadOptions.delimitersToGuess,
+			quoteChar: defaultCsvReadOptions.quoteChar,
+			comments: defaultCsvReadOptions.comments,
+		})
+		if (detected !== null) effectiveDelimiter = detected
 	}
 
+	const parseResult = papaCsv.parse(text, {
+		...defaultCsvReadOptions,
+		delimiter: effectiveDelimiter,
+		//comment rows are not special here: this parse only answers "is it importable and
+		//what does it look like", and the real parse (parseCsv) handles them its own way
+		comments: null,
+		rowInsertCommentLines_commentsString: null,
+	})
+
+	return (parseResult.data || []) as string[][]
+}
+
+/**
+ * entry point for every csv text import (ctrl+v and the "Paste CSV from clipboard" menu item)
+ *
+ * @param canPasteIntoCells only a ctrl+v can offer handsontable's own "paste into the
+ *   selected cells" as an alternative — the menu item has no paste target
+ */
+function importCsvText(text: string, canPasteIntoCells: boolean) {
+
+	const problem = findCsvProblem(text, { quoteChar: defaultCsvReadOptions.quoteChar })
+	if (problem) {
+		showCsvImportError(problem.code, problem.line)
+		return
+	}
+
+	const rows = parseCsvForImport(text)
+
+	if (rows.length === 0) {
+		showCsvImportError('empty', 1)
+		return
+	}
+
+	if (isTableEmpty()) {
+		applyImportedCsvText(text, rows)
+		return
+	}
+
+	pendingCsvImport = { kind: 'text', text, canPasteIntoCells }
+	openCsvImportDialog(rows)
+}
+
+/**
+ * replaces the table with the imported csv
+ *
+ * the text goes to the host frame, not into the editor directly: the host owns the file
+ * name, the encoding and the save state, and a pasted csv has no file handle — so saving
+ * falls back to a download, exactly like a dropped file
+ */
+function applyImportedCsvText(text: string, rows: string[][]) {
+
+	//"use the first row as column headers" (issue #26) — needs at least a header and one
+	//data row, and startRenderData() reads this checkbox, so set it before handing over
+	if (rows.length >= 2 && !hasHeaderReadOptionInput.checked) {
+		hasHeaderReadOptionInput.checked = true
+	}
+
+	csvHostOpenText(text)
+}
+
+/**
+ * opens the "Open CSV file" picker, asking first if that would discard data
+ */
+function openCsvFileFromMenu() {
+
+	closeAllDropdownMenus()
+
+	if (isTableEmpty()) {
+		csvHostOpen()
+		return
+	}
+
+	pendingCsvImport = { kind: 'file' }
+	openCsvImportDialog(null)
+}
+
+/**
+ * reads the clipboard through the host frame (the sandbox has an opaque origin, so the
+ * clipboard api is not available in here) and imports what comes back
+ */
+function importCsvFromClipboard() {
+
+	closeAllDropdownMenus()
+
+	csvHostReadClipboard(
+		(text: string) => importCsvText(text, false),
+		() => showCsvImportError('clipboardDenied', 0)
+	)
+}
+
+/**
+ * @param previewRows null for a file import — there is nothing to preview yet
+ */
+function openCsvImportDialog(previewRows: string[][] | null) {
+
+	if (!importCsvModalDiv) return
+
+	importCsvModalDiv.classList.remove(`is-error`)
+
+	if (importCsvModalTitle) importCsvModalTitle.innerText = _t(`Replace the table data?`)
+	if (importCsvModalText) importCsvModalText.innerText = _t(`The table already contains data. Importing will discard it.`)
+
+	renderCsvImportPreview(previewRows)
+
+	const canPasteIntoCells = pendingCsvImport !== null
+		&& pendingCsvImport.kind === 'text'
+		&& pendingCsvImport.canPasteIntoCells
+
+	if (importCsvReplaceBtn) importCsvReplaceBtn.style.display = ``
+	if (importCsvCellsBtn) importCsvCellsBtn.style.display = canPasteIntoCells ? `` : `none`
+	if (importCsvCancelBtn) importCsvCancelBtn.innerText = _t(`Cancel`)
+
+	importCsvModalDiv.classList.add(`is-active`)
+}
+
+/**
+ * the dialog in its error mode: no preview, no choice, the table is untouched
+ */
+function showCsvImportError(code: 'empty' | 'unterminatedQuote' | 'clipboardDenied', line: number) {
+
+	pendingCsvImport = null
+
+	if (!importCsvModalDiv) return
+
+	importCsvModalDiv.classList.add(`is-error`)
+
+	if (importCsvModalTitle) importCsvModalTitle.innerText = _t(`Could not import the CSV`)
+
+	if (importCsvModalText) {
+		if (code === 'empty') {
+			importCsvModalText.innerText = _t(`There is no CSV text to import.`)
+		} else if (code === 'clipboardDenied') {
+			importCsvModalText.innerText = _t(`The clipboard could not be read. Copy the CSV again, then paste it into the table with ctrl+v.`)
+		} else {
+			importCsvModalText.innerText = `${_t(`A quoted value is never closed, starting on line`)} ${line}. ${_t(`The table was left unchanged.`)}`
+		}
+	}
+
+	renderCsvImportPreview(null)
+
+	if (importCsvReplaceBtn) importCsvReplaceBtn.style.display = `none`
+	if (importCsvCellsBtn) importCsvCellsBtn.style.display = `none`
+	if (importCsvCancelBtn) importCsvCancelBtn.innerText = _t(`Close`)
+
+	importCsvModalDiv.classList.add(`is-active`)
+}
+
+/**
+ * draws at most {@link importCsvPreviewMaxRows} x {@link importCsvPreviewMaxCols} of the
+ * parsed csv — a 40k row paste must not be rendered into a dialog
+ */
+function renderCsvImportPreview(rows: string[][] | null) {
+
+	if (!importCsvPreviewDiv || !importCsvPreviewTable || !importCsvPreviewCaption) return
+
+	importCsvPreviewTable.innerHTML = ``
+
+	if (rows === null) {
+		importCsvPreviewDiv.style.display = `none`
+		return
+	}
+
+	const preview = buildCsvPreview(rows, {
+		maxRows: importCsvPreviewMaxRows,
+		maxCols: importCsvPreviewMaxCols,
+	})
+
+	preview.rows.forEach((row, rowIndex) => {
+		const tr = document.createElement(`tr`)
+		row.forEach(cell => {
+			//the first row is the one that becomes the header, so show it as one
+			const td = document.createElement(rowIndex === 0 ? `th` : `td`)
+			td.innerText = cell
+			tr.appendChild(td)
+		})
+		if (preview.hiddenCols > 0) {
+			const td = document.createElement(rowIndex === 0 ? `th` : `td`)
+			td.innerText = `…`
+			td.className = `import-csv-preview-more`
+			tr.appendChild(td)
+		}
+		importCsvPreviewTable!.appendChild(tr)
+	})
+
+	let caption = `${preview.totalRows} × ${preview.totalCols}`
+	if (preview.hiddenRows > 0 || preview.hiddenCols > 0) {
+		caption += ` — ${_t(`preview shows only the first rows and columns`)}`
+	}
+	importCsvPreviewCaption.innerText = caption
+
+	importCsvPreviewDiv.style.display = ``
+}
+
+function confirmCsvImportReplace() {
+
+	const pending = pendingCsvImport
+	pendingCsvImport = null
+	closeCsvImportModal()
+
+	if (!pending) return
+
+	if (pending.kind === 'file') {
+		//this runs from the button's click, so the user activation still propagates to the
+		//host frame and showOpenFilePicker() is allowed there
+		csvHostOpen()
+		return
+	}
+
+	applyImportedCsvText(pending.text, parseCsvForImport(pending.text))
+}
+
+/**
+ * handsontable's own paste, kept reachable so ctrl+v can still fill a selected block
+ */
+function confirmCsvImportIntoCells() {
+
+	const pending = pendingCsvImport
+	pendingCsvImport = null
+	closeCsvImportModal()
+
+	if (!pending || pending.kind !== 'text' || !hot) return
+
+	//the bundled fork takes the pastable text, not the `triggeredByClick` flag its .d.ts
+	//used to declare (see thirdParty/handsontable/handsontable.d.ts). The second argument
+	//must be passed as empty: left out it DEFAULTS TO THE TEXT, which then also lands in
+	//the synthetic event as `text/html` and handsontable parses the csv as markup.
+	hot.getPlugin('copyPaste').paste(pending.text, '')
+}
+
+function cancelCsvImport() {
+	pendingCsvImport = null
+	closeCsvImportModal()
+}
+
+function closeCsvImportModal() {
+	if (!importCsvModalDiv) return
+	importCsvModalDiv.classList.remove(`is-active`)
+}
+
+/**
+ * ctrl+v on the table imports a csv; ctrl+v while a cell editor is open stays a normal
+ * text paste (issue #26)
+ *
+ * the listener sits on the document in the CAPTURE phase so it runs before handsontable's
+ * own paste handler, which is bound to its hidden textarea (#HandsontableCopyPaste)
+ */
+function setupClipboardImport() {
+
+	document.addEventListener(`paste`, (e: ClipboardEvent) => {
+
+		if (!hot) return
+		if (!shouldInterceptPaste()) return
+
+		const text = e.clipboardData ? e.clipboardData.getData(`text/plain`) : ``
+		if (!text) return
+
+		e.preventDefault()
+		e.stopImmediatePropagation()
+
+		importCsvText(text, true)
+
+	}, true)
+}
+
+/**
+ * false whenever the paste belongs to a text field — an open cell editor, the find widget,
+ * one of the option inputs — so those keep their normal paste
+ */
+function shouldInterceptPaste(): boolean {
+
+	if (!hot) return false
+
+	//modal open (incl. our own import dialog): the paste is not meant for the table
+	if (document.querySelector(`.modal.is-active`)) return false
+
+	//In the bundled handsontable fork the copy/paste target and the cell editor are the SAME
+	//element (`textarea.handsontableInput`, measured in headless chromium) — the newer
+	//`#HandsontableCopyPaste` textarea is never created. So the element cannot tell "the
+	//table has focus" from "a cell is being edited"; only the editor's own state can.
+	//The .d.ts types the editor as a bare `object`, the real one is handsontable's BaseEditor.
+	const activeEditor = hot.getActiveEditor() as { isOpened?: () => boolean } | null
+	if (activeEditor && activeEditor.isOpened && activeEditor.isOpened()) return false
+
+	const target = document.activeElement as HTMLElement | null
+	if (!target) return true
+
+	//that shared textarea, with no editor open, means the table has focus
+	if (target.classList.contains(`handsontableInput`)) return true
+
+	const tagName = target.tagName
+	if (tagName === `INPUT` || tagName === `TEXTAREA` || tagName === `SELECT`) return false
+	if (target.isContentEditable) return false
+
+	return true
 }
 
 let debouncedTableReRender = debounce(() => {

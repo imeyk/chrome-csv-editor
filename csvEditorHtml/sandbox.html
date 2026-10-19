@@ -498,12 +498,33 @@
 					</div>
 				</div>
 
-				<!-- Chrome extension: open a CSV. Delegates to the host frame (picker + File
-				     System Access live there); added here so opening lives in the editor header. -->
-				<vscode-button appearance="secondary" id="open-csv-btn" class="mar-left-half" style="margin-right: 1em;" onclick="csvHostOpen()">
-					<span slot="start" class="icon is-small"><i class="fas fa-folder-open"></i></span>
-					<span>Open CSV</span>
-				</vscode-button>
+				<!-- Chrome extension: open a CSV, from a file or from the clipboard (issue #26).
+				     The file picker + File System Access live in the host frame, so that half
+				     is delegated there; added here so opening lives in the editor header.
+				     The menu opens to the LEFT edge (menu-anchor-left) because this button sits
+				     at the start of the toolbar, unlike "Tools" at its end. -->
+				<div id="open-csv-menu-wrapper" class="btn-with-menu-wrapper mar-left-half" style="margin-right: 1em;">
+
+					<vscode-button appearance="secondary" id="open-csv-btn" class="btn-with-menu" onclick="toggleOpenCsvMenu()">
+						<span slot="start" class="icon is-small"><i class="fas fa-folder-open"></i></span>
+						<span>Open CSV</span>
+						<span slot="end" class="icon is-small"><i id="open-csv-menu-btn-icon" class="fas fa-chevron-down"></i></span>
+					</vscode-button>
+
+					<div class="menu menu-anchor-left" style="width: 16rem;">
+
+						<div class="menu-item" id="open-csv-file-menu-item" onclick="openCsvFileFromMenu()">
+							<span slot="start" class="icon is-small"><i class="fas fa-folder-open"></i></span>
+							<span>Open CSV file</span>
+						</div>
+
+						<div class="menu-item" id="paste-csv-menu-item" onclick="importCsvFromClipboard()">
+							<span slot="start" class="icon is-small"><i class="fas fa-paste"></i></span>
+							<span>Paste CSV from clipboard</span>
+						</div>
+
+					</div>
+				</div>
 
 				<vscode-button appearance="secondary" id="add-row-btn" class="on-readonly-disable-btn" onclick="addRow()">
 					<span slot="start" class="icon is-small"><i class="fas fa-plus"></i></span>
@@ -849,6 +870,45 @@
 		</button>
 	</div>
 
+	<!-- Chrome extension (issue #26): shown before a clipboard/file import replaces a table
+	     that already holds data, and — in its error mode — when the pasted text is not csv.
+	     The preview is cut to a few rows/columns so a 40k row paste cannot render into it. -->
+	<div id="import-csv-modal" class="modal modal-centered">
+		<div class="modal-background" onclick="cancelCsvImport()"></div>
+		<div class="modal-content">
+			<div class="box">
+				<h3 class="title is-3" id="import-csv-modal-title">Replace the table data?</h3>
+
+				<p id="import-csv-modal-text">The table already contains data. Importing will discard it.</p>
+
+				<div id="import-csv-preview">
+					<div class="import-csv-preview-caption" id="import-csv-preview-caption"></div>
+					<div class="import-csv-preview-scroll">
+						<table id="import-csv-preview-table"></table>
+					</div>
+				</div>
+
+				<div style="margin-top: 1em">
+					<vscode-button id="import-csv-replace-btn" class="" onclick="confirmCsvImportReplace()">
+						<span>Replace data</span>
+					</vscode-button>
+
+					<vscode-button appearance="secondary" style="margin-left: 0.5em" id="import-csv-cells-btn" onclick="confirmCsvImportIntoCells()">
+						<span>Paste into cells</span>
+					</vscode-button>
+
+					<vscode-button appearance="secondary" style="margin-left: 0.5em" id="import-csv-cancel-btn" onclick="cancelCsvImport()">
+						<span>Cancel</span>
+					</vscode-button>
+				</div>
+
+			</div>
+		</div>
+		<button class="modal-close is-large clickable" aria-label="close" onclick="cancelCsvImport()">
+			<i class="fas fa-times"></i>
+		</button>
+	</div>
+
 	<div id="ask-read-again-modal" class="modal modal-centered">
 		<div class="modal-background"></div>
 		<div class="modal-content">
@@ -867,7 +927,7 @@
 					</vscode-button>
 
 					<vscode-button appearance="secondary" style="margin-left: 0.5em" class="" onclick="toggleAskReadAgainModal(false)">
-						<span style="width: 3rem">Cancel</span>
+						<span style="min-width: 3rem">Cancel</span>
 					</vscode-button>
 				</div>
 
@@ -897,7 +957,7 @@
 					</vscode-button>
 
 					<vscode-button appearance="secondary" style="margin-left: 0.5em" class="" onclick="toggleAskReloadFileModalDiv(false)">
-						<span style="width: 3rem">Cancel</span>
+						<span style="min-width: 3rem">Cancel</span>
 					</vscode-button>
 				</div>
 
@@ -954,6 +1014,7 @@
 	<script src="../thirdParty/regression/regression.min.js"></script>
 
 	<script src="detect-delimiter.js"></script>
+	<script src="clipboard-csv.js"></script>
 	<script src="row-filter.js"></script>
 	<script src="url-links.js"></script>
 	<script src="out/progressbar.js"></script>

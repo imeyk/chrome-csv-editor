@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Edit CSV",
-  "version": "0.1.10",
+  "version": "0.1.11",
   "default_locale": "en",
   "description": "__MSG_appDesc__",
   "action": {
@@ -14,7 +14,7 @@
     }
   },
   "background": { "service_worker": "extension/background.mjs", "type": "module" },
-  "permissions": ["contextMenus", "webNavigation", "storage", "downloads"],
+  "permissions": ["contextMenus", "webNavigation", "storage", "downloads", "clipboardRead"],
   "host_permissions": ["file:///*"],
   "icons": {
     "16": "extension/icons/icon16.png",

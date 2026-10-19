@@ -210,6 +210,19 @@ function saveFilteredCsv(text) {
   downloadBytes(deriveFilteredDownloadName(currentFile.name), bytes);
 }
 
+// Answers the editor's clipboard request. Always answers, with or without text: the editor
+// keeps a pending callback per request, and a silent failure would leave the menu item dead.
+async function sendClipboardText() {
+  let text = null;
+  try {
+    text = await navigator.clipboard.readText();
+  } catch (err) {
+    // no permission, or the document was not focused when the read was attempted
+    console.warn('[host] clipboard read failed', err);
+  }
+  frame.contentWindow.postMessage({ command: 'clipboardText', text }, '*');
+}
+
 window.addEventListener('message', (e) => {
   if (e.source !== frame.contentWindow) return;
   const msg = e.data || {};
@@ -244,6 +257,11 @@ window.addEventListener('message', (e) => {
     // relayed from the editor header's "Open CSV" button (host-bridge.js);
     // the child frame's click propagates user activation to this frame.
     openFilePicker();
+  } else if (msg.command === 'readClipboard') {
+    // relayed from the editor's "Paste CSV from clipboard" menu item (host-bridge.js).
+    // The sandboxed frame has an opaque origin, so navigator.clipboard is denied in there;
+    // this page is a normal extension page and holds the "clipboardRead" permission.
+    sendClipboardText();
   } else if (msg.command === 'openedFile') {
     // a file was dropped onto the editor (read inside the sandbox). No FS handle,
     // so saving uses the download fallback. The sandbox hands over raw bytes so the

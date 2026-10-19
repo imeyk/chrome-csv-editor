@@ -24,6 +24,7 @@
     if (!cmd || EDITOR_INBOUND[cmd]) return;
     e.stopImmediatePropagation();
     if (cmd === 'encodingInfo') applyEncodingInfo(e.data);
+    if (cmd === 'clipboardText') deliverClipboardText(e.data);
   }, true);
 
   // --- Encoding read/write options -------------------------------------------------
@@ -107,6 +108,58 @@
     // editor opened top level: no host frame to delegate to
     window.open(url, '_blank', 'noopener,noreferrer');
   };
+
+  // --- importing a csv that is not a file (issue #26) ------------------------------
+
+  function isInsideHostFrame() {
+    return !!window.parent && window.parent !== window;
+  }
+
+  // A csv pasted into the editor becomes the open document. It goes through the host for
+  // the same reason a dropped file does: the host owns the name, the encoding and the save
+  // state. There is no file handle, so saving falls back to a download.
+  window.csvHostOpenText = function (text, name) {
+    if (isInsideHostFrame()) {
+      window.parent.postMessage(
+        { command: 'openedFile', name: name || 'pasted.csv', text: text }, '*');
+      return;
+    }
+    // editor opened top-level (no host frame): feed the editor directly
+    window.postMessage(
+      { command: 'csvUpdate', csvContent: { text: text, sliceNr: 1, totalSlices: 1 } }, '*');
+  };
+
+  // Reading the clipboard on a BUTTON CLICK (not from a paste event) needs the clipboard
+  // api, which this frame cannot use: the sandbox has no `allow-same-origin`, so its origin
+  // is opaque and `navigator.clipboard` is denied. The host page is a normal extension page
+  // and has the `clipboardRead` permission, so it reads and hands the text back.
+  var clipboardWaiters = [];
+
+  window.csvHostReadClipboard = function (onText, onError) {
+
+    if (isInsideHostFrame()) {
+      clipboardWaiters.push({ onText: onText, onError: onError });
+      window.parent.postMessage({ command: 'readClipboard' }, '*');
+      return;
+    }
+
+    if (!navigator.clipboard || !navigator.clipboard.readText) {
+      onError();
+      return;
+    }
+    navigator.clipboard.readText().then(onText, function () { onError(); });
+  };
+
+  function deliverClipboardText(msg) {
+    // every pending request is answered: a second click while the first is in flight must
+    // not leave a callback hanging forever
+    var waiters = clipboardWaiters;
+    clipboardWaiters = [];
+    waiters.forEach(function (waiter) {
+      if (typeof msg.text === 'string') waiter.onText(msg.text);
+      else waiter.onError();
+    });
+  }
 
   // Theme: follow the browser/OS light-dark preference. The editor's CSS keys
   // off the `vscode-dark` / `vscode-light` body classes (VS Code webview

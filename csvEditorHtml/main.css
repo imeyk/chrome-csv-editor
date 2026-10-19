@@ -1507,10 +1507,21 @@ h1,h2,h3,h4,h5 {
 	box-shadow: 0 2px 2px 0 rgba(0,0,0,0.14), 0 3px 1px -2px rgba(0,0,0,0.12), 0 1px 5px 0 rgba(0,0,0,0.2);
 }
 
+/* the dropdown anchors to the right edge of its button, which is what the "Tools" button
+   at the end of the toolbar needs; a button at the START of it anchors to the left instead */
+.btn-with-menu-wrapper .menu.menu-anchor-left {
+	left: 0;
+	right: auto;
+}
+
 .btn-with-menu-wrapper .menu .menu-item {
 	padding: 0.5rem 1rem;
 	display: grid;
-	grid-template-columns: 1.5rem 1fr auto;
+	/* the icon column is fixed so the labels line up no matter how wide the glyph is, and
+	   the space after it is the same icon/label gap the buttons use (issue #26) */
+	grid-template-columns: 1.25rem 1fr auto;
+	column-gap: var(--icon-label-gap, calc(var(--design-unit) * 2px));
+	align-items: center;
 	cursor: pointer;
 	color: var(--button-secondary-foreground);
 	background-color: var(--button-secondary-background);
