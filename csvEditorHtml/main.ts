@@ -28,6 +28,30 @@ declare function detectCsvDelimiter(
 		maxRecords?: number,
 	}
 ): string | null
+//see csvEditorHtml/clipboard-csv.js (loaded as a classic script before out/main.js)
+declare function findCsvProblem(
+	text: string | null | undefined,
+	options?: { quoteChar?: string }
+): { code: 'empty' | 'unterminatedQuote', line: number } | null
+declare function isTableDataEmpty(rows: any[][] | null | undefined): boolean
+declare function buildCsvPreview(
+	rows: any[][] | null | undefined,
+	options?: { maxRows?: number, maxCols?: number }
+): {
+	rows: string[][]
+	totalRows: number
+	totalCols: number
+	hiddenRows: number
+	hiddenCols: number
+}
+//see csvEditorHtml/host-bridge.js (chrome extension only, loaded before out/main.js)
+//the file picker, the clipboard and the save state live in the host frame, not in here
+declare function csvHostOpen(): void
+declare function csvHostOpenText(text: string, name?: string): void
+declare function csvHostReadClipboard(
+	onText: (text: string) => void,
+	onError: () => void
+): void
 //see csvEditorHtml/row-filter.js (loaded as a classic script before out/main.js)
 declare var csvRowFilter: {
 	DEFAULT_UNIQUE_VALUES_LIMIT: number
@@ -436,6 +460,19 @@ const isReadonlyModeToggleSpan = _getById(`is-readonly-mode-toggle`) as HTMLSpan
 const toolMenuWrapper = _getById(`tools-menu-wrapper`) as HTMLDivElement
 const toolsMenuBtnIcon = _getById(`tools-menu-btn-icon`) as HTMLButtonElement
 
+//the "Open CSV" dropdown and the csv import dialog only exist in the chrome editor page
+//(csvEditorHtml/sandbox.html); the vs code webview page has no way to open a file -> null is ok
+const openCsvMenuWrapper = document.getElementById(`open-csv-menu-wrapper`)
+const importCsvModalDiv = document.getElementById(`import-csv-modal`)
+const importCsvModalTitle = document.getElementById(`import-csv-modal-title`)
+const importCsvModalText = document.getElementById(`import-csv-modal-text`)
+const importCsvPreviewDiv = document.getElementById(`import-csv-preview`)
+const importCsvPreviewCaption = document.getElementById(`import-csv-preview-caption`)
+const importCsvPreviewTable = document.getElementById(`import-csv-preview-table`)
+const importCsvReplaceBtn = document.getElementById(`import-csv-replace-btn`)
+const importCsvCellsBtn = document.getElementById(`import-csv-cells-btn`)
+const importCsvCancelBtn = document.getElementById(`import-csv-cancel-btn`)
+
 //the row filter actions only exist in the chrome editor page (csvEditorHtml/sandbox.html),
 //the vs code webview page (csvEditorHtml/index.html) does not have them -> null is ok
 const clearAllFiltersMenuItem = document.getElementById(`clear-all-filters-menu-item`)
@@ -447,6 +484,7 @@ const findWidgetInstance = new FindWidget()
 
 setupSideBarResizeHandle()
 setupDropdownHandlers()
+setupClipboardImport()
 
 
 /* main */
