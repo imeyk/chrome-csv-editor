@@ -800,7 +800,9 @@ declare namespace Handsontable {
       getRangedData(ranges: RangeType[]): any[];
       copy(triggeredByClick?: boolean): void;
       cut(triggeredByClick?: boolean): void;
-      paste(triggeredByClick?: boolean): void;
+      // the bundled fork takes the text to paste, not a `triggeredByClick` flag: it builds a
+      // synthetic paste event from `pastableText` and runs its own onPaste over it
+      paste(pastableText?: string, pastableHtml?: string): void;
     }
 
     interface CustomBorders extends Base {

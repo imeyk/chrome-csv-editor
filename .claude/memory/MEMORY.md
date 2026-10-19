@@ -3,4 +3,5 @@
 - [Encoding options are host driven](encoding-options-are-host-driven.md) — the Encoding dropdowns are filled over postMessage by editor-host.mjs, and may only list encodings the extension can also write
 - [The Handsontable fork has no row hiding plugins](handsontable-fork-has-no-row-hiding-plugins.md) — filters/hiddenRows/trimRows are absent from the bundle but declared in its .d.ts, so hiding is hand-rolled via rowHeights and a derived index array
 - [Copying drops the hidden rows](copy-drops-hidden-rows.md) — beforeCopy must mutate handsontable's block in place, and it is the only copy path a selection takes
+- [Handsontable's paste target is the cell editor](handsontable-paste-target-is-the-cell-editor.md) — the same `textarea.handsontableInput` serves both, so only `getActiveEditor().isOpened()` separates a table paste from a cell paste
 - [testFe needs node_modules in the worktree](testfe-needs-node-modules-in-the-worktree.md) — tester.html loads dayjs over http from /node_modules, so a worktree without it fails 72 date tests for no reason
