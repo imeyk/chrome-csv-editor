@@ -3,4 +3,6 @@
 - [Encoding options are host driven](encoding-options-are-host-driven.md) — the Encoding dropdowns are filled over postMessage by editor-host.mjs, and may only list encodings the extension can also write
 - [The Handsontable fork has no row hiding plugins](handsontable-fork-has-no-row-hiding-plugins.md) — filters/hiddenRows/trimRows are absent from the bundle but declared in its .d.ts, so hiding is hand-rolled via rowHeights and a derived index array
 - [Copying drops the hidden rows](copy-drops-hidden-rows.md) — beforeCopy must mutate handsontable's block in place, and it is the only copy path a selection takes
+- [initialConfig is undefined in the Chrome build](initial-config-is-undefined-in-the-chrome-build.md) — sandbox.html sets it to undefined, so every inherited feature gated on `initialConfig?.someFlag` is silently off
+- [Clicked urls open through the host page](clicked-urls-open-through-the-host-page.md) — the editor page is sandboxed, so a tab it opens itself has a null origin; urls go to editor-host.mjs and chrome.tabs.create
 - [testFe needs node_modules in the worktree](testfe-needs-node-modules-in-the-worktree.md) — tester.html loads dayjs over http from /node_modules, so a worktree without it fails 72 date tests for no reason

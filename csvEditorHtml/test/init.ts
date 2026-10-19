@@ -80,6 +80,10 @@ window.knownNumberStylesMap = {
 
 window.newColumnQuoteInformationIsQuoted = false
 
+//util.ts marks the links it renders with this attribute; the constant itself lives in main.ts,
+//which the tester does not load (see tester.html) - same mocking as the globals above
+window.linkIsOpenableAttribute = 'data-link-is-openable'
+
 
 //ui mocks
 

@@ -96,44 +96,93 @@ function isCommentCell(value: string | null, csvReadConfig: CsvReadOptions) {
 	return false
 }
 
+/**
+ * all urls inside a cell value, or null when there is none
+ * the detection itself lives in csvEditorHtml/url-links.js so it can be unit tested in node
+ */
 function containAndExtractUrl(text: string): null | UrlInStringCoords[] {
-	urlRegex.lastIndex = 0
-	//NOT longer needed as we test in the outer functions for http(s):// ...
-	//as most cell values will not contain urls we can do a quick check before running the regex
-	// if (!urlRegex.test(text)) return null
+	return csvUrlLinks.findUrls(text)
+}
 
-	urlRegex.lastIndex = 0
-	let matches = urlRegex.exec(text)
-	if (matches) {
-		let urls: UrlInStringCoords[] = []
+/**
+ * opens a url in a new tab
+ *
+ * the chrome extension runs the editor in a SANDBOXED page (see the `sandbox` section in
+ * manifest.json), and a tab opened from there would inherit that sandbox - a null origin page
+ * that cannot browse. So the chrome build hands the url to its host frame (host-bridge.js ->
+ * editor-host.mjs), which is a normal extension page. Everywhere else (vs code webview, editor
+ * opened top level) window.open is fine.
+ */
+function openUrlInNewTab(url: string) {
 
-		while (matches) {
-			urls.push({
-				url: matches[0],
-				startIndex: matches.index,
-				endIndex: matches.index + matches[0].length
-			})
-			matches = urlRegex.exec(text)
-		}
+	if (url === '') return
 
-		return urls
+	if (typeof csvHostOpenUrl === 'function') {
+		csvHostOpenUrl(url)
+		return
 	}
 
-	return null
+	window.open(url, '_blank', 'noopener,noreferrer')
+}
+
+/**
+ * schedules {@link openUrlInNewTab} after the double click window has passed
+ *
+ * a plain click must open the link AND a double click on the same cell must start editing it.
+ * A double click however arrives as click, click, dblclick - so opening right away would open
+ * two tabs on the way into the editor. The `dblclick` listener in main.ts cancels the pending
+ * open, which leaves the editing path untouched.
+ */
+function openUrlInNewTabAfterDoubleClickWindow(url: string) {
+
+	cancelPendingUrlOpen()
+
+	pendingUrlOpenTimeoutId = window.setTimeout(() => {
+		pendingUrlOpenTimeoutId = null
+
+		//the cell went into edit mode in the meantime (e.g. via F2 or Enter) - in edit mode the
+		//url is plain text in a textarea and must not navigate anywhere
+		if (isCellEditorOpen()) return
+
+		openUrlInNewTab(url)
+	}, openUrlAfterDoubleClickDelayInMs)
+}
+
+function cancelPendingUrlOpen() {
+	if (pendingUrlOpenTimeoutId === null) return
+
+	clearTimeout(pendingUrlOpenTimeoutId)
+	pendingUrlOpenTimeoutId = null
+}
+
+/** true while a cell editor is open, i.e. while the cell shows a textarea and not our links */
+function isCellEditorOpen(): boolean {
+	if (!hot) return false
+
+	//the fork's typings declare getActiveEditor as `object`, hence the cast
+	const editor = hot.getActiveEditor() as { isOpened?: () => boolean } | null | undefined
+	return !!editor && typeof editor.isOpened === 'function' && editor.isOpened()
 }
 
 function createCellValueWithUrlLinks(text: string, urls: UrlInStringCoords[]): (string | HTMLElement)[] {
 
 	const aTags = urls.map(url => {
 		const a = document.createElement('a')
-		a.href = url.url
+		//the href may need a protocol to be openable, the TEXT stays exactly what the cell holds -
+		//the displayed value must never differ from the value we save or export
+		a.href = csvUrlLinks.toHref(url.url)
 		a.innerText = url.url
 		a.setAttribute('target', '_blank')
 		//not really needed anymore, see https://stackoverflow.com/questions/50709625/link-with-target-blank-and-rel-noopener-noreferrer-still-vulnerable
 		//but why not
 		a.setAttribute('rel', 'noopener noreferrer')
+		//an anchor is draggable by default, which would turn a range selection started on the
+		//link text into a link drag instead
+		a.draggable = false
 		a.setAttribute(linkIsOpenableAttribute, '1')
-		a.title = `${getOpenLinkModifierTooltopPart()} ${url.url}`
+		//a plain click opens the link now, so the tooltip only has to name the address that will
+		//be opened - which for a protocol-less url is not what the cell says (see toHref)
+		a.title = a.href
 		return a
 	})
 
@@ -150,29 +199,28 @@ function createCellValueWithUrlLinks(text: string, urls: UrlInStringCoords[]): (
 
 		aTag.addEventListener(`mouseover`, (e) => {
 			aTag.classList.add('link-hovered')
-			hoveredATag = aTag
-
-			if (isOpenLinkModifierPressed(e)) {
-				//if the user presses alt before moving the mouse over the link ... the alt class is not added
-				aTag.classList.add(isOpenUrlKeyDownClass)
-			}
 		})
 		aTag.addEventListener(`mouseout`, (e) => {
 			aTag.classList.remove('link-hovered')
-			aTag.classList.remove(isOpenUrlKeyDownClass)
-			hoveredATag = null
 		})
 
 		aTag.addEventListener(`click`, (e) => {
+
+			//we always open the url ourselves - see openUrlInNewTab for why the default
+			//navigation is not an option in the sandboxed chrome extension page
+			e.preventDefault()
+
 			if (isOpenLinkModifierPressed(e)) {
-				//let the webview open the url
-				return
+				//modifier + click never selects the cell (beforeOnCellMouseDown in ui.ts keeps
+				//handsontable from seeing the mousedown), so there is no double click to wait for
+				e.stopPropagation()
+				openUrlInNewTab(aTag.href)
+				return false
 			}
 
-			//normal click should select the cell or start editing
-			e.stopPropagation()
-			e.preventDefault()
-			return false
+			//a plain click opens the link AND lets handsontable select the cell as usual, so a
+			//double click can still start editing - which is why the open is only scheduled here
+			openUrlInNewTabAfterDoubleClickWindow(aTag.href)
 		})
 
 		htmlParts.push(aTag)
@@ -792,8 +840,8 @@ function removeColumn(index: number) {
  */
 function commentValueAndUrlsRenderer(instance: Handsontable, td: HTMLTableDataCellElement, row: number, col: number, prop: any, value: string | null, cellProperties: any) {
 
-	let isCellWithUrls = initialConfig?.convertUrlsToLinkTags
-		? value && (value.indexOf("http://") >= 0 || value.indexOf("https://") >= 0) // a faster check than regex
+	let isCellWithUrls = convertUrlsToLinkTags
+		? csvUrlLinks.mayContainUrl(value) // a faster check than the full scan, which most cells fail
 		: false
 
 	if (isCellWithUrls) {
@@ -1092,6 +1140,7 @@ function setupAndApplyInitialConfigPart1(initialConfig: EditCsvConfig | undefine
 	}
 
 	highlightCsvComments = initialConfig.highlightCsvComments
+	convertUrlsToLinkTags = initialConfig.convertUrlsToLinkTags
 	enableWrapping = initialConfig.enableWrapping
 	initialColumnWidth = initialConfig.initialColumnWidth
 	newColumnQuoteInformationIsQuoted = initialConfig.newColumnQuoteInformationIsQuoted
@@ -1967,29 +2016,6 @@ function getNextRowIfCommentsAreHidden(visualRowIndex: number): number {
 
 	//give up
 	return 0
-}
-
-function getOpenLinkModifierTooltopPart(): string {
-
-	if (isBrowser) {
-
-		if (isMacOpenLinkModifierKey) {
-			return `(cmd + click)`
-		}
-
-		//windows: ctrl
-		//on linux browsers ctrl + click for open in new tab
-		return `(ctrl + click)`
-	}
-
-	//vs code extension
-
-	if (isMacOpenLinkModifierKey) {
-		// return `(alt + click)`
-		return `(cmd + click)`
-	}
-
-	return `(ctrl + click)`
 }
 
 function isOpenLinkModifierPressed(e: KeyboardEvent | MouseEvent) {

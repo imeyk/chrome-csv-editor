@@ -1062,36 +1062,37 @@ function displayData(this: any, csvParseResult: ExtendedCsvParseResult | null, c
 		},
 		outsideClickDeselects: false, //keep selection
 
-		cells: highlightCsvComments
-			? function (row, col) {
-				var cellProperties: GridSettings = {};
-				cellProperties.renderer = 'commentValueAndUrlsRenderer' //is registered in util
-				// cellProperties.renderer = 'invisiblesCellValueRenderer' //is registered in util
+		//always our own renderer: it draws BOTH the comment highlighting and the url links, which
+		//are independent settings - gating it on highlightCsvComments took the links away
+		//together with the comment colors
+		cells: function (row, col) {
+			var cellProperties: GridSettings = {};
+			cellProperties.renderer = 'commentValueAndUrlsRenderer' //is registered in util
+			// cellProperties.renderer = 'invisiblesCellValueRenderer' //is registered in util
 
-				// if (row === undefined || row === null) return cellProperties
-				// if (col === undefined || col === null) return cellProperties
+			// if (row === undefined || row === null) return cellProperties
+			// if (col === undefined || col === null) return cellProperties
 
-				//@ts-ignore
-				// const _hot = this.instance as Handsontable
-				// const tableData = _hot.getData() //this is slooooooow, getDataAtCell is much faster
+			//@ts-ignore
+			// const _hot = this.instance as Handsontable
+			// const tableData = _hot.getData() //this is slooooooow, getDataAtCell is much faster
 
-				//we should always have 1 col
-				// const visualRowIndex = _hot.toVisualRow(row); //this is toooooo slow for e.g. 100.000 rows (takes ~3.3 mins vs 12s with just cell renderer)
-				// const firstCellVal = _hot.getDataAtCell(row, 0) //tableData[row][0]
+			//we should always have 1 col
+			// const visualRowIndex = _hot.toVisualRow(row); //this is toooooo slow for e.g. 100.000 rows (takes ~3.3 mins vs 12s with just cell renderer)
+			// const firstCellVal = _hot.getDataAtCell(row, 0) //tableData[row][0]
 
-				// if (firstCellVal === null) return cellProperties
+			// if (firstCellVal === null) return cellProperties
 
-				// if (typeof csvReadConfig.comments === 'string' && firstCellVal.trim().startsWith(csvReadConfig.comments)) {
-				// 	//@ts-ignore
-				// 	cellProperties._isComment = true
-				// } else {
-				// 	//@ts-ignore
-				// 	cellProperties._isComment = false
-				// }
+			// if (typeof csvReadConfig.comments === 'string' && firstCellVal.trim().startsWith(csvReadConfig.comments)) {
+			// 	//@ts-ignore
+			// 	cellProperties._isComment = true
+			// } else {
+			// 	//@ts-ignore
+			// 	cellProperties._isComment = false
+			// }
 
-				return cellProperties
-			}
-			: undefined,
+			return cellProperties
+		},
 
 		//not fully working... we would handle already comment cells
 		// beforeChange: function (changes) {

@@ -227,6 +227,19 @@ window.addEventListener('message', (e) => {
     saveCsv(msg.csvContent);
   } else if (msg.command === 'applyFiltered') {
     saveFilteredCsv(msg.csvContent);
+  } else if (msg.command === 'openUrl') {
+    // a url clicked in a cell, relayed by host-bridge.js. The editor frame is SANDBOXED, and a
+    // tab it opened itself would inherit that sandbox (null origin, no cookies - every login
+    // broken), so the tab is opened from here instead.
+    //
+    // chrome.tabs.create and not window.open: the click happened in the child frame and the open
+    // is delayed by the double click window (see openUrlInNewTabAfterDoubleClickWindow), so there
+    // is no user activation to rely on here and a window.open would risk the popup blocker.
+    //
+    // The scheme is checked because this url comes from CSV data - only http(s) may ever be
+    // opened, never javascript:, data: or a chrome-extension: page.
+    const url = String(msg.url || '');
+    if (/^https?:\/\//i.test(url)) chrome.tabs.create({ url, active: true });
   } else if (msg.command === 'openFilePicker') {
     // relayed from the editor header's "Open CSV" button (host-bridge.js);
     // the child frame's click propagates user activation to this frame.
