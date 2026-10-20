@@ -2330,73 +2330,31 @@ function onAnyChange(changes?: CellChanges[] | null, reason?: string) {
 }
 
 
-function _getRealHeight(element: HTMLElement, includeMargin: boolean, excludePadding: boolean,) {
-	let pageWrapperDivStyle = getComputedStyle(element)
-	let fullHeight = element.offsetHeight
-
-	if (excludePadding) {
-		let elTopPadding = parseInt(pageWrapperDivStyle.getPropertyValue('padding-top'))
-		let elBotPadding = parseInt(pageWrapperDivStyle.getPropertyValue('padding-bottom'))
-
-		fullHeight -= elTopPadding
-		fullHeight -= elBotPadding
-	}
-
-	if (includeMargin) {
-		let elTopMargin = parseInt(pageWrapperDivStyle.getPropertyValue('margin-top'))
-		let elBotMargin = parseInt(pageWrapperDivStyle.getPropertyValue('margin-bottom'))
-
-		fullHeight += elTopMargin
-		fullHeight += elBotMargin
-	}
-
-	return fullHeight
-}
-
-function _getRealWidth(element: HTMLElement, includeMargin: boolean, excludePadding: boolean,) {
-	let pageWrapperDivStyle = getComputedStyle(element)
-	let fullWidth = element.offsetWidth
-
-	if (excludePadding) {
-		let elTopPadding = parseInt(pageWrapperDivStyle.getPropertyValue('padding-left'))
-		let elBotPadding = parseInt(pageWrapperDivStyle.getPropertyValue('padding-right'))
-
-		fullWidth -= elTopPadding
-		fullWidth -= elBotPadding
-	}
-
-	if (includeMargin) {
-		let elTopMargin = parseInt(pageWrapperDivStyle.getPropertyValue('margin-left'))
-		let elBotMargin = parseInt(pageWrapperDivStyle.getPropertyValue('margin-right'))
-
-		fullWidth += elTopMargin
-		fullWidth += elBotMargin
-	}
-
-	return fullWidth
-}
-
 /**
  * updates the handson table to fill available space (will trigger scrollbars)
+ *
+ * The size is MEASURED on the element that holds the grid instead of being derived from the
+ * page size minus the toolbars. `#csv-editor-wrapper` is `overflow: hidden`, so it is also
+ * the element that clips the grid: its content box is, by definition, the space the grid may
+ * use - whatever the window size, the page zoom, or the state of the side panel.
+ *
+ * Doing the arithmetic by hand got that wrong (issue #30): the side panel's width was never
+ * subtracted, so the grid came out exactly as wide as the whole page - its vertical scrollbar
+ * and its last column ended up behind the wrapper's clipped edge - and the progress bar row
+ * was missing from the height as well.
  */
 function onResizeGrid() {
 
 	if (!hot) return
 
-	let pageWrapperDivHeight = _getRealHeight(pageWrapperDiv, true, true)
-	let allOptionsDivHeight = _getRealHeight(allOptionsDiv, true, false)
-	let tableActionsDivHeight = _getRealHeight(tableActionsDiv, true, false)
+	//clientWidth/clientHeight are the content box, a scrollbar of the wrapper itself already
+	//taken off
+	const width = csvEditorWrapper.clientWidth
+	const height = csvEditorWrapper.clientHeight
 
-	let pageWrapperDivWidth = _getRealWidth(pageWrapperDiv, true, true)
-	let allOptionsDivWidth = _getRealWidth(allOptionsDiv, true, false)
-	let tableActionsDivWidth = _getRealWidth(tableActionsDiv, true, false)
-
-	console.log(`pageWrapperDivWidth`, pageWrapperDivWidth)
-	console.log(`allOptionsDivWidth`, allOptionsDivWidth)
-	console.log(`tableActionsDivWidth`, tableActionsDivWidth)
-
-	const width = pageWrapperDivWidth
-	const height = pageWrapperDivHeight - allOptionsDivHeight - tableActionsDivHeight
+	//a hidden (or not yet laid out) wrapper measures 0, and handsontable renders that as an
+	//empty grid - keep the last known size instead
+	if (width <= 0 || height <= 0) return
 
 	_updateHandsontableSettings({
 		width: width,

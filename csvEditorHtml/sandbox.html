@@ -682,95 +682,69 @@
 
 				<div id="side-panel-inner">
 
-					<div class="stat">
-						<div>Numbers sum
-							<span class="tooltip is-tooltip-right is-tooltip-multiline"
-								data-tooltip="The sum of numbers in the selected cells (only connected cells). Only the first number of a cell is used. Arbitrary-precision is powered by big.js">
-								<i class="far fa-question-circle"></i>
-							</span>
-						</div>
-						<div id="stat-sum-of-numbers">000</div>
-					</div>
+					<div class="stat-group">
+						<div class="stat-group-title">Selection</div>
 
-					<div class="stat">
-						<div>Selected cells
-							<span class="tooltip is-tooltip-right" data-tooltip="The number of selected cells">
-								<i class="far fa-question-circle"></i>
-							</span>
-						</div>
-						<div id="stat-selected-cells-count">000</div>
-					</div>
-
-					<div class="sub-stat">
-						<div>Not empty
-							<span class="tooltip is-tooltip-right is-tooltip-multiline" data-tooltip="The selected cells count where the value is not empty (whitespace is counted as value)">
-								<i class="far fa-question-circle"></i>
-							</span>
-						</div>
-						<div id="stat-selected-not-empty-cells">000</div>
-					</div>
-
-					<div class="stat">
-						<div>Selected rows
-							<span class="tooltip is-tooltip-right" data-tooltip="The selected rows count">
-								<i class="far fa-question-circle"></i>
-							</span>
+						<div class="stat-row"
+							title="The sum of numbers in the selected cells (only connected cells). Only the first number of a cell is used. Arbitrary-precision is powered by big.js">
+							<span class="stat-label">Numbers sum</span>
+							<span class="stat-value" id="stat-sum-of-numbers">0</span>
 						</div>
 
-						<div id="stat-selected-rows">000</div>
-					</div>
-
-					<div class="stat">
-						<div>Selected cols
-							<span class="tooltip is-tooltip-right" data-tooltip="The selected columns count">
-								<i class="far fa-question-circle"></i>
-							</span>
+						<div class="stat-row" title="The number of selected cells">
+							<span class="stat-label">Cells</span>
+							<span class="stat-value" id="stat-selected-cells-count">0</span>
 						</div>
-						<div id="stat-selected-cols">000</div>
-					</div>
 
-					<div class="stat divider"></div>
-
-					<div class="stat">
-						<div>Rows count</div>
-						<div id="stat-rows-count">000</div>
-					</div>
-
-					<div class="stat">
-						<div>Cols count</div>
-						<div id="stat-cols-count">000</div>
-					</div>
-
-					<div class="stat divider"></div>
-
-					<div class="stat">
-						<div>Numbers style
-							<span class="tooltip is-tooltip-right is-tooltip-multiline" data-tooltip="The number style only applies for the stats, does not affect sorting! Change before selecting cells.">
-								<i class="far fa-question-circle"></i>
-							</span>
+						<div class="stat-row is-sub"
+							title="The selected cells count where the value is not empty (whitespace is counted as value)">
+							<span class="stat-label">Not empty</span>
+							<span class="stat-value" id="stat-selected-not-empty-cells">0</span>
 						</div>
-						<div class="control" style="padding-left: 0;">
-						<div class="ext-radio-group">
-							<div class="ext-radio">
-								<input type="radio" id="numbers-style-en" name="numbers-style" class="ext-checkbox">
-								<label class="ext-checkbox-label" for="numbers-style-en">en: 3.14</label>
-								<span class="tooltip is-tooltip-right is-tooltip-multiline" data-tooltip="Decimal separator: '.' Thousand separator: a single whitespace or ','">
-									<i class="far fa-question-circle"></i>
-								</span>
-							</div>
-							<div class="ext-radio">
-								<input type="radio" id="numbers-style-non-en" name="numbers-style" class="ext-checkbox">
-								<label class="ext-checkbox-label" for="numbers-style-non-en">non-en: 3,14</label>
-								<span class="tooltip is-tooltip-right is-tooltip-multiline" data-tooltip="Decimal separator: ',' Thousand separator: a single whitespace or '.'">
-									<i class="far fa-question-circle"></i>
-								</span>
-							</div>
+
+						<div class="stat-row" title="The selected rows count">
+							<span class="stat-label">Rows</span>
+							<span class="stat-value" id="stat-selected-rows">0</span>
 						</div>
+
+						<div class="stat-row" title="The selected columns count">
+							<span class="stat-label">Columns</span>
+							<span class="stat-value" id="stat-selected-cols">0</span>
 						</div>
 					</div>
 
-					<div class="stat divider"></div>
-					
+					<div class="stat-group">
+						<div class="stat-group-title">Table</div>
+
+						<div class="stat-row" title="The number of rows the table currently shows">
+							<span class="stat-label">Rows</span>
+							<span class="stat-value" id="stat-rows-count">0</span>
+						</div>
+
+						<div class="stat-row" title="The number of columns of the table">
+							<span class="stat-label">Columns</span>
+							<span class="stat-value" id="stat-cols-count">0</span>
+						</div>
+					</div>
+
+					<div class="stat-group">
+						<div class="stat-group-title"
+							title="The number style only applies for the stats, does not affect sorting! Change before selecting cells.">
+							Numbers style</div>
+
+						<div class="ext-segmented">
+							<!-- `setNumbersStyleUi` only runs when there is an `initialConfig`, which this page
+								does not have, so the default 'en' of `getNumbersStyleFromUi` is checked here -
+								without it neither option is marked and the control looks broken -->
+							<input type="radio" id="numbers-style-en" name="numbers-style" checked>
+							<label for="numbers-style-en"
+								title="en: 3.14 - decimal separator: '.' Thousand separator: a single whitespace or ','">3.14</label>
+							<input type="radio" id="numbers-style-non-en" name="numbers-style">
+							<label for="numbers-style-non-en"
+								title="non-en: 3,14 - decimal separator: ',' Thousand separator: a single whitespace or '.'">3,14</label>
+						</div>
+					</div>
+
 					<!-- some day an ad can be placed here -->
 					<!-- <div>
 						<div style="border: 1px solid black; height: 300px;">

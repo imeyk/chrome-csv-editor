@@ -7,3 +7,4 @@
 - [Clicked urls open through the host page](clicked-urls-open-through-the-host-page.md) — the editor page is sandboxed, so a tab it opens itself has a null origin; urls go to editor-host.mjs and chrome.tabs.create
 - [Handsontable's paste target is the cell editor](handsontable-paste-target-is-the-cell-editor.md) — the same `textarea.handsontableInput` serves both, so only `getActiveEditor().isOpened()` separates a table paste from a cell paste
 - [testFe needs node_modules in the worktree](testfe-needs-node-modules-in-the-worktree.md) — tester.html loads dayjs over http from /node_modules, so a worktree without it fails 72 date tests for no reason
+- [The grid's size is measured, not computed](grid-size-is-measured-not-computed.md) — onResizeGrid reads #csv-editor-wrapper, and the min-width/min-height:0 chain plus `body { margin: 0 }` is what keeps that number honest
