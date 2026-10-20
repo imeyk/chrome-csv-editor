@@ -21,6 +21,11 @@ html, body {
 	/* background-color: #c3b990; */
 	background-color: var(--vscode-editor-background);
 	padding: 0;
+	/* the user agent's own 8px body margin used to stay: with height:100% on top of it the
+	   document was 16px taller than the window, and because of `overflow: hidden` those
+	   pixels were simply cut off - the bottom of the grid, where its horizontal scrollbar
+	   renders, among them (issue #30) */
+	margin: 0;
 	overflow: hidden !important;
 }
 
@@ -37,6 +42,11 @@ html, body {
 .csv-editor-wrapper {
 	overflow: hidden;
 	flex: 1;
+	/* a flex item never shrinks below its content unless it is told to: without this the
+	   wrapper could be stretched by the grid it is supposed to clip, and onResizeGrid - which
+	   measures this element - would hand the grid a size the window cannot show */
+	min-width: 0;
+	min-height: 0;
 }
 
 #csv-editor-wrapper {
@@ -369,18 +379,23 @@ body .modal {
 .side-paneled {
 	display: flex;
 	flex: 1;
-	/* needs to be hidden else the content (the table height will resize this larger than it should), see onResizeGrid */
-	/* everything seems to work as expected, if we hide this, some tooltips inside the panel are not fully readable*/
-	/* overflow: hidden; */
+	/* The row must not grow for its content: the stats are taller than a short window, and
+	   this row growing to fit them pushed its own bottom - and with it the grid's horizontal
+	   scrollbar - past the bottom of the page (issue #30). The panel scrolls on its own
+	   instead, see #side-panel-inner.
+	   `overflow: hidden` would do the same but also clip the tooltips inside the panel. */
+	min-width: 0;
+	min-height: 0;
 }
 
 .side-paneled .side-panel {
-	padding: 5px 5px 5px 0; /* body padding -> use 0 */
+	padding: 4px 6px 4px 0; /* body padding -> use 0 */
 	/* border-left: 1px solid #8e8e8e; */
-	/* width: 155px; */
+	width: 170px;
 	min-width: 150px; /* see {@link minSidebarWidthInPx}*/
-	max-width: 150px;
+	max-width: 170px; /* the resize handle overwrites width + max-width inline */
 	display: var(--extension-side-panel-display);
+	min-height: 0;
 }
 
 #left-panel-toggle {
@@ -390,6 +405,13 @@ body .modal {
 
 #side-panel-inner {
 	flex: 1;
+	min-width: 0;
+	/* see .side-paneled: the stats scroll inside the panel instead of making the row taller
+	   than the window */
+	min-height: 0;
+	overflow-y: auto;
+	overflow-x: hidden;
+	scrollbar-width: thin;
 }
 
 .left-panel-toggle-icon-collapse {
@@ -434,6 +456,114 @@ body .modal {
 .side-panel .stat.divider {
 	border-bottom: 1px solid #8e8e8e52;
 	margin-bottom: 3px;
+}
+
+/*
+ * The chrome editor page's side panel (csvEditorHtml/sandbox.html).
+ *
+ * It is a dense read-only list, so every row is one line: label left, value right, numbers
+ * in tabular figures so the digits line up under each other. The label truncates instead of
+ * wrapping (the full text, and what the value means, is in the row's `title`) - labels and
+ * their question mark icons wrapping into two or three lines each is what made the panel
+ * look ragged.
+ *
+ * The `.stat` / `.sub-stat` rules above still serve the vs code page, which kept the
+ * inherited markup.
+ */
+
+.side-panel .stat-group {
+	font-size: 12px;
+	line-height: 1.4;
+}
+
+.side-panel .stat-group + .stat-group {
+	margin-top: 10px;
+	padding-top: 8px;
+	border-top: 1px solid #8e8e8e52;
+}
+
+.side-panel .stat-group-title {
+	font-size: 10px;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	opacity: 0.7;
+	margin-bottom: 4px;
+}
+
+.side-panel .stat-row {
+	display: grid;
+	/* minmax(0, ...) so neither column refuses to shrink: the label can be ellipsed and a
+	   long value ("Some invalid num", a 30 digit sum) wraps inside its own column */
+	grid-template-columns: minmax(0, 1fr) minmax(0, auto);
+	column-gap: 6px;
+	align-items: baseline;
+	padding: 2px 0;
+}
+
+.side-panel .stat-row.is-sub .stat-label {
+	padding-left: 10px; /* reads as a detail of the row above */
+}
+
+.side-panel .stat-label {
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+	opacity: 0.75;
+}
+
+.side-panel .stat-value {
+	text-align: right;
+	font-variant-numeric: tabular-nums;
+	font-feature-settings: "tnum";
+	overflow-wrap: anywhere;
+}
+
+/* The number style is a choice between two values: as a segmented control it takes one line
+   and one glance, where the radio list took four lines and still wrapped. */
+.side-panel .ext-segmented {
+	display: flex;
+	margin-top: 2px;
+	border: 1px solid var(--dropdown-border, #8e8e8e52);
+	border-radius: 3px;
+	overflow: hidden;
+}
+
+.side-panel .ext-segmented input {
+	/* the radios stay in the dom (they carry the state and the keyboard handling), the labels
+	   are what is visible */
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	opacity: 0;
+	pointer-events: none;
+}
+
+.side-panel .ext-segmented label {
+	flex: 1;
+	padding: 2px 0;
+	text-align: center;
+	font-size: 12px;
+	font-variant-numeric: tabular-nums;
+	cursor: pointer;
+	user-select: none;
+}
+
+.side-panel .ext-segmented label + input + label {
+	border-left: 1px solid var(--dropdown-border, #8e8e8e52);
+}
+
+.side-panel .ext-segmented label:hover {
+	background-color: #8e8e8e29;
+}
+
+.side-panel .ext-segmented input:checked + label {
+	background-color: var(--button-primary-background, var(--vscode-button-background, #0e639c));
+	color: var(--button-primary-foreground, var(--vscode-button-foreground, #ffffff));
+}
+
+.side-panel .ext-segmented input:focus-visible + label {
+	outline: 1px solid var(--focus-border, #007fd4);
+	outline-offset: -1px;
 }
 
 .radio-list .radio {
